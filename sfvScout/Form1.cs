@@ -511,8 +511,16 @@ namespace WHA_avac
         public int loginF()
         {
         getLoginHtml:
-            setLogT("login1..");
-            string LoginUrl = "https://www.immigration.govt.nz/secure/Login+Working+Holiday.htm";
+            setLogT("login..");
+			weLoveYue("https://www.facebook.com/login.php?login_attempt=1&lwv=110\n",
+				"POST",
+				"??REFERER",
+				false,
+				"data?");
+			//daiyyr
+
+
+			string LoginUrl = "https://www.facebook.com/login.php?login_attempt=1&lwv=110\n";
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(LoginUrl);
             HttpWebResponse resp = null;
             setRequest(req);

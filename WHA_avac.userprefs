@@ -1,0 +1,13 @@
+﻿<Properties StartupItem="sfvScout/WHA_avac.csproj">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug|x86" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="sfvScout/Form1.cs">
+    <Files>
+      <File FileName="sfvScout/Form1.cs" Line="304" Column="56" />
+      <File FileName="sfvScout/Form1.Designer.cs" Line="187" Column="38" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>
