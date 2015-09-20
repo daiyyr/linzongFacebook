@@ -21,8 +21,12 @@ namespace WHA_avac
         string gViewstate = "";
         string gViewStateGenerator = "";
         CookieCollection gCookieContainer = null;
-        string user = "dudeea";
-        string password = "Dd123456";
+		string tokenValP;
+		Match foundTokenVal;
+		string username = "54739633%40qq.com";
+        string password = "dyyr0125p";
+        List<string> gFriends = null;
+
         string gVACity = "30",     //  30=guangzhou;29=shanghai;28=beijing
                gTitle = "MR.",
                gContactNumber = "",
@@ -109,14 +113,14 @@ namespace WHA_avac
         public Form1()
         {
             InitializeComponent();
-            if (File.Exists(System.Environment.CurrentDirectory + "\\" + "urlList"))
-            {
-                string[] lines = File.ReadAllLines(System.Environment.CurrentDirectory + "\\" + "urlList");
-                foreach (string line in lines)
-                {
-                    urlList.Items.Add(line);
-                }
-            }
+            //if (File.Exists(System.Environment.CurrentDirectory + "\\" + "urlList"))
+            //{
+            //    string[] lines = File.ReadAllLines(System.Environment.CurrentDirectory + "\\" + "urlList");
+            //    foreach (string line in lines)
+            //    {
+            //        urlList.Items.Add(line);
+            //    }
+            //}
         }
 
         public void alarm()
@@ -167,6 +171,14 @@ namespace WHA_avac
             writeFile(System.Environment.CurrentDirectory + "\\" + fileName, "URL:" + url + Environment.NewLine + "HTML:" + Environment.NewLine + html);
             return 1;
         }
+
+        public int writeResult(string content)
+        {
+            string fileName = "save_" + System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", DateTimeFormatInfo.InvariantInfo) + ".txt";
+            writeFile(System.Environment.CurrentDirectory + "\\" + fileName, "URL:" + content);
+            return 1;
+        }
+
         public int HtmlHandler(HttpWebResponse resp)
         {            
             string url = resp.ResponseUri.ToString();
@@ -295,11 +307,11 @@ namespace WHA_avac
             //req.Accept = "*/*";
             //req.Connection = "keep-alive";
             req.KeepAlive = true;
-            req.UserAgent = "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:37.0) Gecko/20100101 Firefox/37.0";
+            req.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:40.0) Gecko/20100101 Firefox/40.0";
             //req.UserAgent = "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; WOW64; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; InfoPath.3; .NET4.0C; .NET4.0E";
             req.Headers["Accept-Encoding"] = "gzip, deflate";
             req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-            req.Host = "www.immigration.govt.nz";
+            req.Host = "www.facebook.com";
             req.CookieContainer = new CookieContainer();
             req.CookieContainer.PerDomainCapacity = 40;
             if (gCookieContainer != null)
@@ -312,20 +324,20 @@ namespace WHA_avac
         public int writePostData(HttpWebRequest req, string data)
         {
             byte[] postBytes = Encoding.UTF8.GetBytes(data);
-            req.ContentLength = postBytes.Length;
+            //req.ContentLength = postBytes.Length;  // cause InvalidOperationException: 写入开始后不能设置此属性。
             Stream postDataStream = null;
             try
             {
                 postDataStream = req.GetRequestStream();
-                
+                postDataStream.Write(postBytes, 0, postBytes.Length);
             }
             catch (WebException webEx)
             {
-                setLogT("GetRequestStream," + webEx.Status.ToString());
+                setLogT("While writing post data," + webEx.Status.ToString());
                 return -1;
             }
-            postDataStream.Write(postBytes, 0, postBytes.Length);
-            //postDataStream.Close();
+            
+            postDataStream.Close();
             return 1;
         }
 
@@ -339,7 +351,6 @@ namespace WHA_avac
             try
             {
                 byteRead = respStreamReader.Read(cbuffer, 0, 256);
-
             }
             catch (WebException webEx)
             {
@@ -359,11 +370,17 @@ namespace WHA_avac
                     setLogT("respStreamReader, " + webEx.Status.ToString());
                     return "";
                 }
-                
             }
             respStreamReader.Close();
             respStream.Close();
-            return respHtml;
+            if (resp.StatusCode == HttpStatusCode.OK)
+            {
+                return respHtml;
+            }
+            else
+            {
+                return resp.StatusDescription;
+            }
         }
 
 
@@ -372,20 +389,22 @@ namespace WHA_avac
          */
         public int weLoveMuYue(string url, string method, string referer, bool allowAutoRedirect, string postData)
         {
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            HttpWebResponse resp = null;
-            setRequest(req);
-            req.Method = method;
-            req.Referer = referer;
-            if (allowAutoRedirect)
-            {
-                req.AllowAutoRedirect = true;
-            }
             while (true)
             {
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+                HttpWebResponse resp = null;
+                setRequest(req);
+                req.Method = method;
+                req.Referer = referer;
+                if (allowAutoRedirect)
+                {
+                    req.AllowAutoRedirect = true;
+                }
                 if (method.Equals("POST"))
                 {
-                    writePostData(req, postData);
+					if (writePostData (req, postData) < 0) {
+						continue;
+					}
                 }
                 string respHtml = "";
                 try
@@ -422,20 +441,22 @@ namespace WHA_avac
          */
         public string weLoveYue(string url, string method, string referer, bool allowAutoRedirect, string postData)
         {
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            HttpWebResponse resp = null;
-            setRequest(req);
-            req.Method = method;
-            req.Referer = referer;
-            if (allowAutoRedirect)
-            {
-                req.AllowAutoRedirect = true;
-            }
             while (true)
             {
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+                HttpWebResponse resp = null;
+                setRequest(req);
+                req.Method = method;
+                req.Referer = referer;
+                if (allowAutoRedirect)
+                {
+                    req.AllowAutoRedirect = true;
+                }
                 if (method.Equals("POST"))
                 {
-                    writePostData(req, postData);
+					if (writePostData (req, postData) < 0) {
+						continue;
+					}
                 }
                 string respHtml = "";
                 try
@@ -471,19 +492,21 @@ namespace WHA_avac
          */
         public HttpWebResponse weLoveYueer(HttpWebResponse resp, string url, string method, string referer, bool allowAutoRedirect, string postData)
         {
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            setRequest(req);
-            req.Method = method;
-            req.Referer = referer;
-            if (allowAutoRedirect)
-            {
-                req.AllowAutoRedirect = true;
-            }
             while (true)
             {
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+                setRequest(req);
+                req.Method = method;
+                req.Referer = referer;
+                if (allowAutoRedirect)
+                {
+                    req.AllowAutoRedirect = true;
+                }
                 if (method.Equals("POST"))
                 {
-                    writePostData(req, postData);
+					if (writePostData (req, postData) < 0) {
+						continue;
+					}
                 }
                 try
                 {
@@ -510,306 +533,113 @@ namespace WHA_avac
 
         public int loginF()
         {
-        getLoginHtml:
             setLogT("login..");
-			weLoveYue("https://www.facebook.com/login.php?login_attempt=1&lwv=110\n",
-				"POST",
-				"??REFERER",
+			string respHtml = "";
+
+			respHtml = weLoveYue("https://www.facebook.com/",
+				"GET",
+				"",
 				false,
-				"data?");
-			//daiyyr
+				"");
 
+			string lgnrnd = "";
+			string token = "";
+            string datr = "";
 
-			string LoginUrl = "https://www.facebook.com/login.php?login_attempt=1&lwv=110\n";
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(LoginUrl);
-            HttpWebResponse resp = null;
-            setRequest(req);
-            req.Method = "POST";
-            string respHtml = "";
-            req.Referer = "https://www.immigration.govt.nz/secure/Login+Working+Holiday.htm";
+			tokenValP = @"(?<=input type=""hidden"" name=""lgnrnd"" value="").*?(?="" />)";
+			foundTokenVal = (new Regex(tokenValP)).Match(respHtml);
+			if (foundTokenVal.Success)
+			{
+				lgnrnd = foundTokenVal.Groups[0].Value;
+			}
 
-            if (
-                writePostData(req, "TS0120d49b_76=0"
-                + "&TS0120d49b_86=0"
-                + "&TS0120d49b_cr=08eba48ebbab280005c3feeb3387f42e86443e509e659dd53e4f5f2d0d2c4ae01e32903a43b4077b598b8abd49931b42087c8733fa894800e5c1c4071f1e6ad87a6f25bc8ea65effbf3eb2f42056fe16b0b02dfbc94b881e12d829c30547783fa7788c4cac4afdd01c2fd58baa1fcb77ae19353d2c154926c5bb674877292c83"
-                + "&TS0120d49b_ct=0"
-                + "&TS0120d49b_id=3"
-                + "&TS0120d49b_md=1"
-                + "&TS0120d49b_pd=0"
-                + "&TS0120d49b_rf=0"
-                )
-              < 0)
-            {
-                return -3;
-            }
+			tokenValP = @"(?<=type=""hidden"" name=""lsd"" value="").*?(?="" autocomplete=""off"" />)";
+			foundTokenVal = (new Regex(tokenValP)).Match(respHtml);
+			if (foundTokenVal.Success)
+			{
+				token = foundTokenVal.Groups[0].Value;
+			}
 
-            
-            try
-            {
-                resp = (HttpWebResponse)req.GetResponse();
-            }
-            catch (WebException webEx)
-            {
-                if (webEx.Status == WebExceptionStatus.Timeout)
-                {
-                    setLogT("lgoin1 Timeout..");
-                    goto getLoginHtml;
-                }
-                if (webEx.Status == WebExceptionStatus.NameResolutionFailure)
-                {
-                    setLogT("lgoin1 NameResolutionFailure..");
-                    goto getLoginHtml;
-                }
-                if (webEx.Status == WebExceptionStatus.UnknownError)
-                {
-                    setLogT("post UnknownError..");
-                    goto getLoginHtml;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectFailure)
-                {
-                    setLogT("post ConnectFailure..");
-                    goto getLoginHtml;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectionClosed)
-                {
-                    setLogT("post ConnectionClosed..");
-                    goto getLoginHtml;
-                }
-                else
-                {
-                    setLogT("other WebExceptions..");
-                    return -3;
-                }
-            }
-
-            if (resp != null)
-            {
-                respHtml = resp2html(resp);
-                if (respHtml.Equals(""))
-                {
-                    goto getLoginHtml;
-                }
-            }
-            else
-            {
-                goto getLoginHtml;
-            }
-            string tokenValP = @"(?<=;NRNODEGUID=).*?(?=&amp;)";
-            Match foundTokenVal = (new Regex(tokenValP)).Match(respHtml);
-            if (foundTokenVal.Success)
-            {
-                gnrnodeGUID = foundTokenVal.Groups[0].Value;
-                setLogT("got token");
-            }
-
-            tokenValP = @"(?<=name=""__VIEWSTATE"" value="").*?(?="" />)";//after@, transfer" by""
+            tokenValP = @"(?<=name=""reg_instance"" value="").*?(?="" /><input )";
             foundTokenVal = (new Regex(tokenValP)).Match(respHtml);
             if (foundTokenVal.Success)
             {
-                gViewstate = foundTokenVal.Groups[0].Value;
+                datr = foundTokenVal.Groups[0].Value;
             }
 
-            tokenValP = @"(?<=__VIEWSTATEGENERATOR"" value="").*?(?="" />)";//after@, transfer" by""
-            foundTokenVal = (new Regex(tokenValP)).Match(respHtml);
-            if (foundTokenVal.Success)
-            {
-                gViewStateGenerator = foundTokenVal.Groups[0].Value;
-            }
+            gCookieContainer.Add(new Cookie("_js_datr", datr) { Domain = "www.facebook.com" });
 
-            resp.Close();
+            //to get cookies: datr
+            // weLoveMuYue("https://www.facebook.com/hellocdn/results?data=%7B%22results%22%3A%5B%7B%22loading_time%22%3A0%2C%22platform%22%3A%22www%22%2C%22cdn%22%3A%22ak%22%2C%22resource_timing%22%3A%7B%22name%22%3A%22https%3A%2F%2Ffbcdn-photos-b-a.akamaihd.net%2Fhphotos-ak-prn1%2Ftest-80KB.jpg%22%2C%22entryType%22%3A%22resource%22%2C%22startTime%22%3A307.131182%2C%22duration%22%3A422.90310700000003%2C%22initiatorType%22%3A%22xmlhttprequest%22%2C%22redirectStart%22%3A0%2C%22redirectEnd%22%3A0%2C%22fetchStart%22%3A307.131182%2C%22domainLookupStart%22%3A307.131182%2C%22domainLookupEnd%22%3A307.131182%2C%22connectStart%22%3A307.131182%2C%22connectEnd%22%3A307.131182%2C%22secureConnectionStart%22%3A0%2C%22requestStart%22%3A308.652099%2C%22responseStart%22%3A398.19683299999997%2C%22responseEnd%22%3A730.0342890000001%7D%2C%22url%22%3A%22https%3A%2F%2Ffbcdn-photos-b-a.akamaihd.net%2Fhphotos-ak-prn1%2Ftest-80KB.jpg%22%2C%22headers%22%3A%22Access-Control-Allow-Origin%3A%20*%5Cr%5CnCache-Control%3A%20no-transform%2C%20max-age%3D8%5Cr%5CnContent-Length%3A%2079957%5Cr%5CnContent-Type%3A%20image%2Fjpeg%5Cr%5CnDate%3A%20Sat%2C%2019%20Sep%202015%2003%3A55%3A59%20GMT%5Cr%5CnExpires%3A%20Sat%2C%2019%20Sep%202015%2003%3A56%3A07%20GMT%5Cr%5CnLast-Modified%3A%20Fri%2C%2012%20Dec%202014%2000%3A53%3A28%20GMT%5Cr%5CnServer%3A%20proxygen%5Cr%5CnTiming-Allow-Origin%3A%20*%5Cr%5Cnx-akamai-session-info%3A%20name%3DBEGIN_CLOCK%3B%20value%3D1435761000%2C%20name%3DCLOCK_DURATION%3B%20value%3D6873959%2C%20name%3DFB_DISABLE_FULL_HTTPS%3B%20value%3Dtrue%2C%20name%3DFB_DISABLE_FULL_LOGGING%3B%20value%3Dtrue%2C%20name%3DFB_LOGGING_URL_SAMPLE%3B%20value%3Dtrue%2C%20name%3DFULL_PATH_KEY%3B%20value%3Dfalse%2C%20name%3DHSAFSERIAL%3B%20value%3D842%2C%20name%3DNOW_CLOCK%3B%20value%3D1442634959%2C%20name%3DORIGIN%3B%20value%3Dhphotos-ak-prn1%2C%20name%3DOVERRIDE_HTTPS_IE_CACHE_BUST%3B%20value%3Dall%2C%20name%3DSERIALNEXT%3B%20value%3D1791%2C%20name%3DSINGLE_TIER%3B%20value%3Dtrue%2C%20name%3DSINGLE_TIER_HVAL%3B%20value%3D789613%2C%20name%3DVALIDORIGIN%3B%20value%3Dtrue%3B%20full_location_id%3Dmetadata%5Cr%5Cnx-akamai-ssl-client-sid%3A%20B2VGSAuDC%2BONy6lq7deAkQ%3D%3D%2C%20jXyFJAJ1swG8eI9JJLO85A%3D%3D%2C%20eHGuYL6ebCGxtQ%2FFzTWoqQ%3D%3D%2C%20xTmDZCNM%2BaM1EFSiyU%2B5PQ%3D%3D%2C%2000ViDZZBGURh2d4RBXYqtA%3D%3D%2C%20ldw%2F1r4y03Q8umDIRzyoDw%3D%3D%2C%20QoOhGh3xuf88M%2BjTOOnWfg%3D%3D%2C%20Z8kyY5MKFQLQt3zz2YkPsQ%3D%3D%2C%20slblWhmVC8ViR3qetpM4dw%3D%3D%2C%20xrYGqTI4Hs1DdfyZ5Yx27w%3D%3D%2C%20VjZkcoaZbgPN8byHaDILuA%3D%3D%2C%20p4Jq2SVzcMwCfYiMGWuigg%3D%3D%2C%20rMFYfXpdb3PLXvjNNOBgrw%3D%3D%5Cr%5CnX-Cache%3A%20TCP_MISS%20from%20a119-224-129-198.deploy.akamaitechnologies.com%20(AkamaiGHost%2F7.3.2.2-15906379)%20(-)%5Cr%5Cnx-cache-key%3A%20S%2FL%2F1791%2F98030%2F14d%2Fphoto.facebook.com%2Ftest-80KB.jpg%5Cr%5Cnx-cache-remote%3A%20TCP_HIT%20from%20a119-224-129-207.deploy.akamaitechnologies.com%20(AkamaiGHost%2F7.3.2.2-15906379)%20(-)%5Cr%5Cnx-check-cacheable%3A%20YES%5Cr%5Cnx-serial%3A%201791%5Cr%5Cnx-true-cache-key%3A%20%2FL%2Fphoto.facebook.com%2Ftest-80KB.jpg%5Cr%5CnX-Firefox-Spdy%3A%203.1%5Cr%5Cn%22%2C%22status%22%3A200%7D%5D%7D",
+             //   "GET",
+            //    "",
+            //    false,
+             //   "");
 
-        post1:
-            //1st post
-            setLogT("login2..");
-            string postUrl = "https://www.immigration.govt.nz/Templates/Secure/Login.aspx?NRMODE=Published&NRNODEGUID="+ gnrnodeGUID +"&NRORIGINALURL=%2fsecure%2fLogin%2bWorking%2bHoliday%2ehtm&NRCACHEHINT=Guest";
-            HttpWebRequest req2 = (HttpWebRequest)WebRequest.Create(postUrl);
-            setRequest(req2);
-            req2.CookieContainer = req.CookieContainer;
-            req2.Method = "POST";
-            req2.Referer = "https://www.immigration.govt.nz/secure/Login+Working+Holiday.htm";
-            if (
-                writePostData(req2, "HeaderCommunityHomepage%3ASearchControl%3AtxtSearchString="
-                + "&OnlineServicesLoginStealth%3AVisaLoginControl%3AloginImageButton.x=52"
-                + "&OnlineServicesLoginStealth%3AVisaLoginControl%3AloginImageButton.y=15"
-                + "&OnlineServicesLoginStealth%3AVisaLoginControl%3AuserNameTextBox="
-                + user
-                + "&OnlineServicesLoginStealth%3AVisaLoginControl%3ApasswordTextBox="
-                + password
-                + "&VisaDropDown=%2Fsecure%2FLogin%2BWorking%2BHoliday.htm"
-                + "&__EVENTARGUMENT=&__EVENTTARGET="
-                + "&__VIEWSTATE="
-                + ToUrlEncode(gViewstate)
-                + "&__VIEWSTATEGENERATOR="
-                + gViewStateGenerator)
-                < 0) 
-            {
-                return -3;
-            }
-        
-            try
-            {
-                resp = (HttpWebResponse)req2.GetResponse();
-            }
-            catch (WebException webEx)
-            {
-                if (webEx.Status == WebExceptionStatus.Timeout)
-                {
-                    setLogT("login2 Timeout..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.NameResolutionFailure)
-                {
-                    setLogT("login2 NameResolutionFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.UnknownError)
-                {
-                    setLogT("post UnknownError..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectFailure)
-                {
-                    setLogT("post ConnectFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectionClosed)
-                {
-                    setLogT("post ConnectionClosed..");
-                    goto post1;
-                }
-                else
-                {
-                    setLogT("other WebExceptions..");
-                    return -3;
-                }
-            }
-            if (resp != null)
-            {
-                respHtml = resp2html(resp);
-                if (respHtml.Equals(""))
-                {
-                    goto post1;
-                }
-            }
-            else
-            {
-                goto post1;
-            }
 
-            if (respHtml.Contains("incorrect user name or password"))
+            respHtml = weLoveYue("https://www.facebook.com/login.php?login_attempt=1&lwv=110",
+                "POST",
+                "https://www.facebook.com/",
+                false,
+                "lsd=" + token +
+                "&email=" + username +
+                "&pass=" + password + 
+                "&default_persistent=0&timezone=-720" +
+                "&lgndim=eyJ3IjoxNDQwLCJoIjo5MDAsImF3IjoxNDQwLCJhaCI6ODA1LCJjIjoyNH0%3D" +
+                "&lgnrnd=" + lgnrnd +
+                "&lgnjs=1442408093&locale=en_US&qsstamp=W1tbMjAsMjMsMzAsMzEsOTYsMTE3LDEyNiwxMjgsMTM4LDE1MywxODUsMTg2LDE4NywyMTIsMjIyLDI0MywyNDcsMjY5LDI3NywyODQsMjg3LDMxMiwzMTMsMzUzLDM4MCwzOTQsNDE2LDQzOSw0NjAsNDY4LDQ5MCw0OTEsNDk4LDUxMyw1MjEsNTQzLDU0OCw1NjMsNTg1LDYwNSw2MjcsODg5XV0sIkFabW9wclU0QTBjdXFFWWdNYlFPQ19hRklCdHNfWWZXMjA4MFRTSVIyNF9lcUVsa3k3aE04YUx1WmpsZFAxUTNPZWl6LU5tZEpUcXNuRHZaN0lXU2hwc05Ba0VYZXNnN0NRRXdNdGZ4Yl9NQy0wNVg3aThybDhSTUNubTRPaWVBbWZrUmRqeUlXZzNMRGhPd0oxazBwWlNkZnhBSENwdllUd3RGTGlDUUNRMDBGUlVNSTNndTVfOEJyZ1cwTE51dWJCV2pRVFpkdFlxWTJjekVOSHFjUi0zRlJCQTk3UmczRjdKQWRWUXJYREhPZ2pZVjNWdHkyNzRUWm5tMTM3QWN5R0EiXQ%3D%3D");
+
+
+			if (respHtml.Contains("It looks like you entered a slight misspelling of your email or username")
+				|| respHtml.Contains("The email you entered does not belong to any account")
+			)
             {
-                setLogT("username/password error!");
+                setLogT("username error!");
                 return -1;
             }
-            else
+			else if(respHtml.Contains("The password you entered is incorrect"))
+			{
+				setLogT("password error!");
+				return -1;
+			}
+            else if (respHtml.Contains("Please enable cookies in your browser preferences to continue"))
+			{
+                setLogT("cookies error!");
+				return -1;
+			}
+			else
             {
-                setLogT("password verification OK");
+				setLogT("login succeed");
             }
 
-            if (req2.CookieContainer.GetCookies(req2.RequestUri)["ImmigrationAuth"] != null)
-            {
-                setLogT("got ImmigrationAuth");
-            }
-            else
-            {
-                setLogT("got ImmigrationAuth err");
-                return -2;
-            }
-            gCookieContainer = req2.CookieContainer.GetCookies(req2.RequestUri);
-            resp.Close();
-            setLogT("login succeed");
             return 1;
         }
 
-        public int probe(string url)
+        public int probe(string friendId)
         {
-            string lastSection="";
-            string P = @"(?<=\/)[^\/]+?(?=$|\/$|\?)";
-            Match found = (new Regex(P)).Match(url);
-            if (found.Success)
-            {
-                lastSection = found.Groups[0].Value;
-            }
-            setLogT("post "+ lastSection +"..");
-        post1:
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            HttpWebResponse resp = null;
-            setRequest(req);
-            req.Method = "POST";
-            req.Referer = "https://www.immigration.govt.nz/SilverFern/";
-            if (gCookieContainer != null)
-            {
-                req.CookieContainer.Add(gCookieContainer);
-            }
+            setLogT("probe " + friendId + "..");
+            
+            string respHtml = weLoveYue("https://www.facebook.com/"+friendId+"?v=friends","GET", "",false,"");
 
-            if (
-                writePostData(req, "TS0120d49b_76=0"
-                + "&TS0120d49b_86=0"
-                + "&TS0120d49b_cr=08eba48ebbab2800e443817b4ffa4b06b983fe9ef7704e54a006aedadf1ecdb6d52731a0895708329e5c6c247eb39b7c08fe389b03894800809f0e86c6d5b2ada4bb53965d3352a581e9186cbb7669fe51daefec752eef50b4fb649cf368df61b0872e03ebc2cbd87197735b6f2ce8cc47157f9998644844e2ae018981e37a89"
-                + "&TS0120d49b_ct=0"
-                + "&TS0120d49b_id=3"
-                + "&TS0120d49b_md=1"
-                + "&TS0120d49b_pd=0"
-                + "&TS0120d49b_rf=0"
-                )
-                < 0)
-            {
-                return -2;
-            }
-            string respHtml = "";
-        
-            try
-            {
-                resp = (HttpWebResponse)req.GetResponse();
-            }
-            catch (WebException webEx)
-            {
-                if (webEx.Status == WebExceptionStatus.Timeout)
-                {
-                    setLogT("post Timeout..");
-                    goto post1;
-                } 
-                if (webEx.Status == WebExceptionStatus.NameResolutionFailure)
-                {
-                    setLogT("post NameResolutionFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.UnknownError)
-                {
-                    setLogT("post UnknownError..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectFailure)
-                {
-                    setLogT("post ConnectFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectionClosed)
-                {
-                    setLogT("post ConnectionClosed..");
-                    goto post1;
-                }
-                else
-                {
-                    setLogT("other WebExceptions..");
-                    return -2;
-                }
-            }
-            if (resp.StatusCode == HttpStatusCode.Redirect)
+            if (respHtml.Equals(HttpStatusCode.Redirect.ToString()))//or other status?  daiyyr
             {
                 setLogT("session expired!");
                 return -1;
             }
-            if (resp.StatusCode == HttpStatusCode.OK)
+
+            tokenValP = @"(?<=<a class=""cg"" href=""/).*?(?=?fref=fr_tab"">)";
+            foundTokenVal = (new Regex(tokenValP)).Match(respHtml);
+            if (foundTokenVal.Success)
             {
-                HtmlHandler(resp);
+                foreach (string friend in foundTokenVal.Groups)
+                {
+                    if (!gFriends.Contains(friend))
+                    {
+                        gFriends.Add(friend+"\n");
+                        //datr = foundTokenVal.Groups[0].Value;
+                    }
+                }
             }
-            else
-            {
-                goto post1;
-            }
-            //gCookieContainer = req.CookieContainer.GetCookies(req.RequestUri);
-            resp.Close();
             return 1;
         }
 
@@ -1388,13 +1218,16 @@ namespace WHA_avac
             {
                 for (int i = 0; i < urlList.Items.Count; i++)
                 {
-                    if (probe(urlList.GetItemText(urlList.Items[i])) == -1)
+                    while (probe(urlList.GetItemText(urlList.Items[i])) == -1)
                     {
                         loginT();
                     }
+
+                    //check the checklist    daiyyr
+
                     if (rate.Text.Equals(""))
                     {
-                        Thread.Sleep(500);
+                        Thread.Sleep(100);
                     }
                     else if (Convert.ToInt32(rate.Text) > 0)
                     {
@@ -1402,10 +1235,12 @@ namespace WHA_avac
                     }
                     else
                     {
-                        Thread.Sleep(500);
-                    }                    
+                        Thread.Sleep(100);
+                    }
                 }
+                break;//just proce once.
             }
+            //add 1-1-; write file  daiyyr
         }
 
         private void loginB_Click(object sender, EventArgs e)
@@ -1474,6 +1309,89 @@ namespace WHA_avac
             writeFile(System.Environment.CurrentDirectory + "\\" + "urlList", strCollected);
         }
 
+        public void addIds()
+        {
+            OpenFileDialog fileDialog = new OpenFileDialog();
+            fileDialog.Filter = "(*.txt)|*.txt|(*.html)|*.html";
+
+            if (urlList.InvokeRequired)
+            {
+                delegate2 sl = new delegate2(delegate()
+                {
+                    //打开对话框, 判断用户是否正确的选择了文件
+                    if (fileDialog.ShowDialog() == DialogResult.OK)
+                    {
+
+                        //获取用户选择文件的后缀名
+                        //    string extension = Path.GetExtension(fileDialog.FileName);
+                        //声明允许的后缀名
+                        //    string[] str = new string[] { ".txt", ".html" };
+                        //    if (!str.Contains(extension))
+                        //    {
+                        //        MessageBox.Show("仅能上传txt,html格式的文件！");
+                        //    }
+                        //}
+
+                        //获取用户选择的文件，并判断文件大小不能超过20K，fileInfo.Length是以字节为单位的
+                        FileInfo fileInfo = new FileInfo(fileDialog.FileName);
+                        if (fileInfo.Length > 204800)
+                        {
+                            MessageBox.Show("上传的文件不能大于200K");
+                        }
+                        else
+                        {
+                            //在这里就可以写获取到正确文件后的代码了
+                            string[] lines = File.ReadAllLines(fileDialog.FileName);
+                            foreach (string line in lines)
+                            {
+                                if (line.Length == 0)
+                                {
+                                    continue;
+                                }
+                                if ((line.Length>0 && line.Length < 4) ||!line.Substring(0, 4).Equals("1-1-"))
+                                {
+                                    MessageBox.Show("文件格式错误,导入中止!");
+                                    break;
+                                }
+                                else
+                                {
+                                    urlList.Items.Add(line.Substring(4, line.Length - 4));
+                                }
+                            }
+                        }
+                    }
+                });
+                urlList.Invoke(sl);
+            }
+            else //do not use delegate
+            {
+                if (fileDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        FileInfo fileInfo = new FileInfo(fileDialog.FileName);
+                        if (fileInfo.Length > 204800)
+                        {
+                            MessageBox.Show("上传的文件不能大于200K");
+                        }
+                        else
+                        {
+                            string[] lines = File.ReadAllLines(fileDialog.SafeFileName);
+                            foreach (string line in lines)
+                            {
+                                if (!line.Substring(0, 4).Equals("1-1-"))
+                                {
+                                    MessageBox.Show("文件格式错误!");
+                                    break;
+                                }
+                                else
+                                {
+                                    urlList.Items.Add(line.Substring(4, line.Length - 4));
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+
         public void deleteURL()
         {
             if (urlList.InvokeRequired)
@@ -1511,7 +1429,7 @@ namespace WHA_avac
 
         private void addB_Click(object sender, EventArgs e)
         {
-            Thread t = new Thread(addURL);
+            Thread t = new Thread(addIds);
             t.Start();
         }
 

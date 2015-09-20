@@ -41,23 +41,25 @@
             this.label4 = new System.Windows.Forms.Label();
             this.urlList = new System.Windows.Forms.CheckedListBox();
             this.testLog = new System.Windows.Forms.RichTextBox();
+            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.label5 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // loginB
             // 
-            this.loginB.Location = new System.Drawing.Point(431, 12);
+            this.loginB.Location = new System.Drawing.Point(276, 66);
             this.loginB.Name = "loginB";
-            this.loginB.Size = new System.Drawing.Size(63, 32);
+            this.loginB.Size = new System.Drawing.Size(88, 36);
             this.loginB.TabIndex = 1;
-            this.loginB.Text = "forceLogin";
+            this.loginB.Text = "Login";
             this.loginB.UseVisualStyleBackColor = true;
             this.loginB.Click += new System.EventHandler(this.loginB_Click);
             // 
             // autoB
             // 
-            this.autoB.Location = new System.Drawing.Point(196, 12);
+            this.autoB.Location = new System.Drawing.Point(276, 12);
             this.autoB.Name = "autoB";
-            this.autoB.Size = new System.Drawing.Size(229, 32);
+            this.autoB.Size = new System.Drawing.Size(218, 48);
             this.autoB.TabIndex = 0;
             this.autoB.Text = "start";
             this.autoB.UseVisualStyleBackColor = true;
@@ -66,15 +68,15 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(10, 28);
+            this.label1.Location = new System.Drawing.Point(16, 32);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(59, 12);
+            this.label1.Size = new System.Drawing.Size(35, 12);
             this.label1.TabIndex = 3;
             this.label1.Text = "rate:";
             // 
             // rate
             // 
-            this.rate.Location = new System.Drawing.Point(67, 23);
+            this.rate.Location = new System.Drawing.Point(75, 23);
             this.rate.Name = "rate";
             this.rate.Size = new System.Drawing.Size(68, 21);
             this.rate.TabIndex = 4;
@@ -84,7 +86,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(141, 30);
+            this.label2.Location = new System.Drawing.Point(149, 32);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(17, 12);
             this.label2.TabIndex = 5;
@@ -96,7 +98,7 @@
             this.label3.Font = new System.Drawing.Font("宋体", 9F);
             this.label3.Location = new System.Drawing.Point(441, 362);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(53, 12);
+            this.label3.Size = new System.Drawing.Size(59, 12);
             this.label3.TabIndex = 8;
             this.label3.Text = "for muyue";
             // 
@@ -113,42 +115,44 @@
             // 
             // addB
             // 
-            this.addB.Location = new System.Drawing.Point(355, 77);
+            this.addB.Location = new System.Drawing.Point(398, 66);
             this.addB.Name = "addB";
-            this.addB.Size = new System.Drawing.Size(70, 23);
+            this.addB.Size = new System.Drawing.Size(96, 36);
             this.addB.TabIndex = 11;
-            this.addB.Text = "add";
+            this.addB.Text = "import";
             this.addB.UseVisualStyleBackColor = true;
             this.addB.Click += new System.EventHandler(this.addB_Click);
             // 
             // deleteB
             // 
-            this.deleteB.Location = new System.Drawing.Point(431, 77);
+            this.deleteB.Location = new System.Drawing.Point(192, 12);
             this.deleteB.Name = "deleteB";
             this.deleteB.Size = new System.Drawing.Size(63, 23);
             this.deleteB.TabIndex = 12;
             this.deleteB.Text = "delete";
             this.deleteB.UseVisualStyleBackColor = true;
+            this.deleteB.Visible = false;
             this.deleteB.Click += new System.EventHandler(this.deleteB_Click);
             // 
             // inputT
             // 
-            this.inputT.Location = new System.Drawing.Point(67, 50);
+            this.inputT.Location = new System.Drawing.Point(75, 50);
             this.inputT.Name = "inputT";
-            this.inputT.Size = new System.Drawing.Size(427, 21);
+            this.inputT.Size = new System.Drawing.Size(180, 21);
             this.inputT.TabIndex = 13;
             // 
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(12, 53);
+            this.label4.Location = new System.Drawing.Point(16, 59);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(29, 12);
+            this.label4.Size = new System.Drawing.Size(59, 12);
             this.label4.TabIndex = 14;
-            this.label4.Text = "url:";
+            this.label4.Text = "username:";
             // 
             // urlList
             // 
+            this.urlList.Enabled = false;
             this.urlList.FormattingEnabled = true;
             this.urlList.Location = new System.Drawing.Point(14, 106);
             this.urlList.Name = "urlList";
@@ -164,13 +168,31 @@
             this.testLog.TabIndex = 16;
             this.testLog.Text = "";
             // 
+            // textBox1
+            // 
+            this.textBox1.Location = new System.Drawing.Point(75, 79);
+            this.textBox1.Name = "textBox1";
+            this.textBox1.Size = new System.Drawing.Size(180, 21);
+            this.textBox1.TabIndex = 17;
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(16, 82);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(59, 12);
+            this.label5.TabIndex = 14;
+            this.label5.Text = "password:";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(931, 730);
+            this.Controls.Add(this.textBox1);
             this.Controls.Add(this.testLog);
             this.Controls.Add(this.urlList);
+            this.Controls.Add(this.label5);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.inputT);
             this.Controls.Add(this.deleteB);
@@ -183,7 +205,7 @@
             this.Controls.Add(this.autoB);
             this.Controls.Add(this.loginB);
             this.Name = "Form1";
-            this.Text = "WHA_avac";
+            this.Text = "FacebookFriendsIdWorm";
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -204,6 +226,8 @@
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.CheckedListBox urlList;
         private System.Windows.Forms.RichTextBox testLog;
+        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.Label label5;
     }
 }
 
