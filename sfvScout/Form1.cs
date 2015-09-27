@@ -11,36 +11,36 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Globalization;
+using System.Net.Cache;
 
 namespace WHA_avac
 {
     public partial class Form1 : Form
     {
-        Thread gAlarm = null;
-        string gnrnodeGUID = "";
-        string gViewstate = "";
-        string gViewStateGenerator = "";
+
+        bool debug = false;
+
+        DateTime expireDate = new DateTime(2015, 10, 12);
+
+        //Thread gAlarm = null;
+       // string gnrnodeGUID = "";
+      //  string gViewstate = "";
+      //  string gViewStateGenerator = "";
+       
         CookieCollection gCookieContainer = null;
-		string tokenValP;
+		string rgx;
 		Match myMatch;
-		string username = "54739633%40qq.com";
-        string password = "dyyr0125";
+		string username = "";           //"54739633%40qq.com";
+        string password = "";           //"dyyr0125";
         bool gLoginOkFlag = false;
         List<string> gFriends = new List<string>();
-
-
-        string gVACity = "30",     //  30=guangzhou;29=shanghai;28=beijing
-               gTitle = "MR.",
-               gContactNumber = "",
-               gEmail = "33333%40qq.com",//replace @ with %40 
-               gFname = "ZHANG",
-               gLastName = "XIAOMING",
-               gMobile = "13900000000",
-               gPassport = "55555555",
-               gSTDCode = "0533",
-               gDays = "5721"           //5721 means 2015.08.31, the number of days since 2000.01.01
-               ;
-
+        string collection_token = "";
+        string cursor = "";
+        string profile_id= "";
+        string user_id="";
+        string revision = "";
+        int succeed = 0;
+        int failed = 0;
 
         public delegate void setLog(string str1);
         public void setLogT(string s)
@@ -115,6 +115,29 @@ namespace WHA_avac
         public Form1()
         {
             InitializeComponent();
+            label6.Text = "expire date: " + expireDate.ToString("yyyy-MM-dd");
+            if (debug)
+            {
+                button1.Visible = true;
+                testLog.Visible = true;
+                this.ClientSize = new System.Drawing.Size(931, 760);
+            }
+
+            DateTime t = GetNistTime();
+            if (t == DateTime.MinValue)
+            {
+                setLogT("请连接互联网");
+                autoB.Visible = false;
+            }
+            else
+            {
+                if ((t - expireDate).Days > 0)
+                {
+                    setLogT("程序已过期，请联系作者");
+                    autoB.Visible = false;
+                }
+            }
+
             //if (File.Exists(System.Environment.CurrentDirectory + "\\" + "urlList"))
             //{
             //    string[] lines = File.ReadAllLines(System.Environment.CurrentDirectory + "\\" + "urlList");
@@ -124,13 +147,38 @@ namespace WHA_avac
             //    }
             //}
         }
-
+        /*
         public void alarm()
         {
             System.Media.SoundPlayer player = new System.Media.SoundPlayer(WHA_avac.Properties.Resources.mtl);
             player.Load();
             player.PlayLooping();
         }
+        */
+
+        public static DateTime GetNistTime()
+        {
+            DateTime dateTime = DateTime.MinValue;
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://nist.time.gov/actualtime.cgi?lzbc=siqm9b");
+            request.Method = "GET";
+            request.Accept = "text/html, application/xhtml+xml, */*";
+            request.UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/6.0)";
+            request.ContentType = "application/x-www-form-urlencoded";
+            request.CachePolicy = new RequestCachePolicy(RequestCacheLevel.NoCacheNoStore); //No caching
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                StreamReader stream = new StreamReader(response.GetResponseStream());
+                string html = stream.ReadToEnd();//<timestamp time=\"1395772696469995\" delay=\"1395772696469995\"/>
+                string time = Regex.Match(html, @"(?<=\btime="")[^""]*").Value;
+                double milliseconds = Convert.ToInt64(time) / 1000.0;
+                dateTime = new DateTime(1970, 1, 1).AddMilliseconds(milliseconds).ToLocalTime();
+            }
+
+            return dateTime;
+        }
+
         public static string ToUrlEncode(string strCode)
         {
             StringBuilder sb = new StringBuilder();
@@ -160,160 +208,33 @@ namespace WHA_avac
             sw.Close();
         }
 
-        public int downloadHtml(string url, string html)
-        {
-            string lastSection = "";
-            string P = @"(?<=\/)[^\/]+?(?=$|\/$|\?)";
-            Match found = (new Regex(P)).Match(url);
-            if (found.Success)
-            {
-                lastSection = found.Groups[0].Value;
-            }
-            string fileName = lastSection + System.DateTime.Now.ToString("yyyyMMddHHmmss", DateTimeFormatInfo.InvariantInfo) + ".txt";
-            writeFile(System.Environment.CurrentDirectory + "\\" + fileName, "URL:" + url + Environment.NewLine + "HTML:" + Environment.NewLine + html);
-            return 1;
-        }
-
         public int writeResult(string content)
         {
-            string fileName = "save_" + System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", DateTimeFormatInfo.InvariantInfo) + ".txt";
-            writeFile(System.Environment.CurrentDirectory + "\\" + fileName, content);
+            setLogT("Succeed: "+ succeed +", failed: " + failed );
+            if (succeed>0){
+                string fileName = "save_" + System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", DateTimeFormatInfo.InvariantInfo) + ".txt";
+                writeFile(System.Environment.CurrentDirectory + "\\" + fileName, content);
+                setLogT("Result in " + System.Environment.CurrentDirectory + "\\" + fileName);
+            }
+                 
             return 1;
         }
 
-        public int HtmlHandler(HttpWebResponse resp)
-        {            
-            string url = resp.ResponseUri.ToString();
-            string html = resp2html(resp);
-            if (html.Equals(""))
-            {
-                return -1;
-            }
-            string validHtml = "";
-            string lastSection = "";
-            bool have_APM_DO_NOT_TOUCH = false;
-            string P = @"(?<=\/)[^\/]+?(?=$|\/$|\?)";
-            Match found = (new Regex(P)).Match(url);
-            if (found.Success)
-            {
-                lastSection = found.Groups[0].Value;
-            }
-            if (html.Contains("APM_DO_NOT_TOUCH"))//得到的是带JS乱码的页
-            {
-                have_APM_DO_NOT_TOUCH = true;
-                P = @"(?<=</APM_DO_NOT_TOUCH>)[\s\S]+(?=$)";
-                found = (new Regex(P)).Match(html);
-                if (found.Success)
-                {
-                    validHtml = found.Groups[0].Value;
-                }
-            }
-            else
-            {
-                validHtml = html;
-            }
-            validHtml = Regex.Replace(validHtml, @"<div id=""dateTime"">.+?<\/div>", "");
-            DirectoryInfo dir = new DirectoryInfo(System.Environment.CurrentDirectory);
-            FileInfo[] allFile = dir.GetFiles();
-            bool isNewContent = true;
-            bool isNewURL = true;
-            foreach (FileInfo fi in allFile)
-            {                
-                if (!fi.Name.Contains(lastSection))
-                {
-                    continue;
-                }
-                else
-                {
-                    string fileContent = System.IO.File.ReadAllText(fi.FullName);
-                    string urlInFile = "";
-                    P = @"(?<=URL:).+?(?=\r\n)";
-                    found = (new Regex(P)).Match(fileContent);
-                    if (found.Success)
-                    {
-                        urlInFile = found.Groups[0].Value;
-                    }
-                    if (!urlInFile.Equals(url))
-                    {
-                        continue;
-                    }
-                    else//找到url相同的文件
-                    {
-                        isNewURL = false;
-                        string validHtmlInFile = "";
-                        if (have_APM_DO_NOT_TOUCH)
-                        {
-                            P = @"(?<=</APM_DO_NOT_TOUCH>)[\s\S]+(?=$)";
-                            found = (new Regex(P)).Match(fileContent);
-                            if (found.Success)
-                            {
-                                validHtmlInFile = found.Groups[0].Value;
-                            }
-                        }
-                        else
-                        {
-                            P = @"(?<=\r\nHTML:\r\n)[\s\S]+(?=$)";
-                            found = (new Regex(P)).Match(fileContent);
-                            if (found.Success)
-                            {
-                                validHtmlInFile = found.Groups[0].Value;
-                            }
-                        }
-                        validHtmlInFile = Regex.Replace(validHtmlInFile, @"<div id=""dateTime"">.+?<\/div>", "");
-                        if (validHtmlInFile.Equals(validHtml))//有效内容也相同，则认为页面无变更
-                        {
-                            isNewContent = false;
-                            break;
-                        }
-                        else //有效内容不同，有可能与早期文件内容不同，与新文件相同，继续遍历
-                        {
-                            continue;
-                        }
-                    }
-                }
-            }
-            if (isNewURL)//认为是新增的地址，进行第一次下载
-            {
-                downloadHtml(url, html);
-                setLogT("new url: " + url );
-                setLogT("page saved successfully");
-                return 1;
-            }
-            if (isNewContent)//旧URL，且与所有文件内容均不同，下载文件，拉响警报！
-            {
-                downloadHtml(url, html);
-                if (gAlarm != null)
-                {
-                    //gAlarm.Abort();                   
-                }
-                else
-                {
-                    Thread t = new Thread(alarm);
-                    t.Start();
-                    gAlarm = t;
-                }
-                setLogtRed("Attention! Page modified on " + url);
-                return 2;
-            }
-            else
-            {
-                setLogT(url + " is unchanged");
-                return 3;
-            }
-        }
 
         public void setRequest(HttpWebRequest req)
         {
-            req.AllowAutoRedirect = false;
-            req.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+            //req.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
             //req.Accept = "*/*";
             //req.Connection = "keep-alive";
-            req.KeepAlive = true;
-            req.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:40.0) Gecko/20100101 Firefox/40.0";
+            //req.KeepAlive = true;
             //req.UserAgent = "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; WOW64; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; InfoPath.3; .NET4.0C; .NET4.0E";
-            req.Headers["Accept-Encoding"] = "gzip, deflate";
-            req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+            //req.Headers["Accept-Encoding"] = "gzip, deflate";
+            //req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+
             req.Host = "www.facebook.com";
+
+            req.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:40.0) Gecko/20100101 Firefox/40.0";
+            req.AllowAutoRedirect = false;
             req.CookieContainer = new CookieContainer();
             req.CookieContainer.PerDomainCapacity = 40;
             if (gCookieContainer != null)
@@ -345,8 +266,20 @@ namespace WHA_avac
 
         public string resp2html(HttpWebResponse resp)
         {
-            string respHtml = "";
-            char[] cbuffer = new char[256];
+            
+            if (resp.StatusCode == HttpStatusCode.OK)
+            {
+                StreamReader stream = new StreamReader(resp.GetResponseStream());
+                return stream.ReadToEnd();
+            }
+            else
+            {
+                return resp.StatusDescription;
+            }
+
+            /*
+             char[] cbuffer = new char[256];
+             string respHtml = "";
             Stream respStream = resp.GetResponseStream();
             StreamReader respStreamReader = new StreamReader(respStream);//respStream,Encoding.UTF8
             int byteRead = 0;
@@ -372,6 +305,7 @@ namespace WHA_avac
                     setLogT("respStreamReader, " + webEx.Status.ToString());
                     return "";
                 }
+
             }
             respStreamReader.Close();
             respStream.Close();
@@ -383,6 +317,7 @@ namespace WHA_avac
             {
                 return resp.StatusDescription;
             }
+             */
         }
 
 
@@ -430,7 +365,10 @@ namespace WHA_avac
                 {
                     continue;
                 }
-                setTestLog(req, respHtml);
+                if (debug)
+                {
+                    setTestLog(req, respHtml);
+                }
                 gCookieContainer = req.CookieContainer.GetCookies(req.RequestUri);
                 resp.Close();
                 break;
@@ -468,6 +406,10 @@ namespace WHA_avac
                 catch (WebException webEx)
                 {
                     setLogT("respStreamReader, " + webEx.Status.ToString());
+                    if (webEx.Status == WebExceptionStatus.ConnectionClosed)
+                    {
+                        return "wrong address"; //user id错误
+                    }
                     continue;
                 }
                 if (resp != null)
@@ -478,7 +420,10 @@ namespace WHA_avac
                         continue;
                     }
                     gCookieContainer = req.CookieContainer.GetCookies(req.RequestUri);
-                    setTestLog(req, respHtml);
+                    if (debug)
+                    {
+                        setTestLog(req, respHtml);
+                    }
                     resp.Close();
                     return respHtml;
                 }
@@ -548,26 +493,37 @@ namespace WHA_avac
 			string token = "";
             string datr = "";
 
-			tokenValP = @"(?<=input type=""hidden"" name=""lgnrnd"" value="").*?(?="" />)";
-			myMatch = (new Regex(tokenValP)).Match(respHtml);
+            if (respHtml.Equals("Found"))
+            {
+                setLogT("getting login page failed!");
+                return -1;
+            }
+
+            rgx = @"(?<=name=""reg_instance"" value="").*?(?="" /><input )";
+            myMatch = (new Regex(rgx)).Match(respHtml);
+            if (myMatch.Success)
+            {
+                datr = myMatch.Groups[0].Value;
+            }
+            else
+            {
+                setLogT("getting login page failed!");
+                return -1;
+            }
+
+			rgx = @"(?<=input type=""hidden"" name=""lgnrnd"" value="").*?(?="" />)";
+			myMatch = (new Regex(rgx)).Match(respHtml);
 			if (myMatch.Success)
 			{
 				lgnrnd = myMatch.Groups[0].Value;
 			}
 
-			tokenValP = @"(?<=type=""hidden"" name=""lsd"" value="").*?(?="" autocomplete=""off"" />)";
-			myMatch = (new Regex(tokenValP)).Match(respHtml);
+			rgx = @"(?<=type=""hidden"" name=""lsd"" value="").*?(?="" autocomplete=""off"" />)";
+			myMatch = (new Regex(rgx)).Match(respHtml);
 			if (myMatch.Success)
 			{
 				token = myMatch.Groups[0].Value;
 			}
-
-            tokenValP = @"(?<=name=""reg_instance"" value="").*?(?="" /><input )";
-            myMatch = (new Regex(tokenValP)).Match(respHtml);
-            if (myMatch.Success)
-            {
-                datr = myMatch.Groups[0].Value;
-            }
 
             gCookieContainer.Add(new Cookie("_js_datr", datr) { Domain = "www.facebook.com" });
 
@@ -592,7 +548,15 @@ namespace WHA_avac
                 "&lgnjs=1442408093&locale=en_US&qsstamp=W1tbMjAsMjMsMzAsMzEsOTYsMTE3LDEyNiwxMjgsMTM4LDE1MywxODUsMTg2LDE4NywyMTIsMjIyLDI0MywyNDcsMjY5LDI3NywyODQsMjg3LDMxMiwzMTMsMzUzLDM4MCwzOTQsNDE2LDQzOSw0NjAsNDY4LDQ5MCw0OTEsNDk4LDUxMyw1MjEsNTQzLDU0OCw1NjMsNTg1LDYwNSw2MjcsODg5XV0sIkFabW9wclU0QTBjdXFFWWdNYlFPQ19hRklCdHNfWWZXMjA4MFRTSVIyNF9lcUVsa3k3aE04YUx1WmpsZFAxUTNPZWl6LU5tZEpUcXNuRHZaN0lXU2hwc05Ba0VYZXNnN0NRRXdNdGZ4Yl9NQy0wNVg3aThybDhSTUNubTRPaWVBbWZrUmRqeUlXZzNMRGhPd0oxazBwWlNkZnhBSENwdllUd3RGTGlDUUNRMDBGUlVNSTNndTVfOEJyZ1cwTE51dWJCV2pRVFpkdFlxWTJjekVOSHFjUi0zRlJCQTk3UmczRjdKQWRWUXJYREhPZ2pZVjNWdHkyNzRUWm5tMTM3QWN5R0EiXQ%3D%3D");
 
 
-			if (respHtml.Contains("It looks like you entered a slight misspelling of your email or username")
+            if (respHtml.Equals("Found"))
+            {
+                setLogT("login succeed");
+                gLoginOkFlag = true;
+                return 1;
+
+            }
+            if (respHtml.Contains("Incorrect email or phone number")
+                || respHtml.Contains("It looks like you entered a slight misspelling of your email or username")
 				|| respHtml.Contains("The email you entered does not belong to any account")
 			)
             {
@@ -609,35 +573,76 @@ namespace WHA_avac
                 setLogT("cookies error!");
 				return -1;
 			}
-			else
-            {
-				setLogT("login succeed");
-                gLoginOkFlag = true;
-            }
 
-            return 1;
+            return -2;
         }
 
-        public int probe(string friendId)
+        public int probe(string userId)
         {
-            setLogT("probe " + friendId + "..");
-            
-            string respHtml = weLoveYue("https://www.facebook.com/"+friendId+"?v=friends","GET", "",false,"");
+            setLogT("probe " + userId + "..");
 
-            if (respHtml.Contains("Please enter the text below"))
+            string respHtml = weLoveYue(
+       //         "https://www.facebook.com/" + userId + "?v=friends",
+                "https://www.facebook.com/" + userId + "/friends",
+                "GET", "", false, "");
+
+            if (respHtml.Equals("wrong address"))
             {
-                setLogT("Security Check needed, please try again");
-                return -1;
+                setLogtRed("用户id错误");
+                return -2;
             }
 
-            if ( respHtml.Equals(HttpStatusCode.Redirect.ToString()) || respHtml.Contains("class=\"uiHeaderTitle\">Favorites</h4>") )
+            if (
+                respHtml.Equals("Found")
+                ||
+                (respHtml.Length < 100000 && respHtml.Contains("class=\"uiHeaderTitle\">Favorites</h4>"))
+                ||
+                (respHtml.Length < 100000 && respHtml.Contains("Please enter the text below"))
+                )
             {
                 setLogT("session expired!");
                 return -1;
             }
+
+            if (respHtml.Length < 200001)
+            {
+                setLogtRed("无权限访问该用户好友列表");
+                return -2;
+            }
+
+            rgx = @"(?<=""USER_ID"":"")\d+?(?="")";
+			myMatch = (new Regex(rgx)).Match(respHtml);
+			if (myMatch.Success)
+			{
+				user_id = myMatch.Groups[0].Value;
+			}
+
+            rgx = @"(?<=\[\]\,{""revision"":)\d+?(?=\,)";
+			myMatch = (new Regex(rgx)).Match(respHtml);
+			if (myMatch.Success)
+			{
+				revision = myMatch.Groups[0].Value;
+			}
+
+            respHtml = respHtml.Substring(60000, respHtml.Length-60000);
+            rgx = @"(?<=friends_all"" aria-controls=""pagelet_timeline_app_collection_).*?(?="")";
+			myMatch = (new Regex(rgx)).Match(respHtml);
+			if (myMatch.Success)
+			{
+				collection_token = myMatch.Groups[0].Value;
+			}
+            collection_token = ToUrlEncode(collection_token);
+
+            rgx = @"^\d+(?=\%)";
+			myMatch = (new Regex(rgx)).Match(collection_token);
+			if (myMatch.Success)
+			{
+				profile_id = myMatch.Groups[0].Value;
+			}
             
-            tokenValP = @"(?<=_8o _8t lfloat _ohe"" href=""https://www.facebook.com/).*?(?=\?fref=pb)";
-            myMatch = (new Regex(tokenValP)).Match(respHtml);
+            respHtml = respHtml.Substring(140000, respHtml.Length-140000);
+            rgx = @"(?<=https:\/\/www\.facebook\.com\/)(\w|\.)+?(?=\?fref=pb&amp;hc_location=\w+?"" tabindex=)";
+            myMatch = (new Regex(rgx)).Match(respHtml);
             while (myMatch.Success)
             {
                 //ignore all digital id
@@ -648,559 +653,81 @@ namespace WHA_avac
                 }
                 if ((gFriends == null) || (!gFriends.Contains(myMatch.Groups[0].Value)))
                 {
-                    gFriends.Add(myMatch.Groups[0].Value + "\n");
+                    gFriends.Add(myMatch.Groups[0].Value);
                     //datr = myMatch.Groups[0].Value;
                 }
                 myMatch = myMatch.NextMatch();
             }
-            return 1;
+
+            rgx = @"(?<=pagelet_timeline_app_collection_" + collection_token.Replace("%3A",":") + @""",{""__m"":""\w+_\w+_\w+""},"").*?(?="")";
+			myMatch = (new Regex(rgx)).Match(respHtml);
+			if (myMatch.Success)
+			{
+				cursor = myMatch.Groups[0].Value;
+			}
+            else //just on one page
+            {
+                return 1;
+            }
+            cursor = ToUrlEncode(cursor);
+
+            //page by page
+            while(true){
+                respHtml = weLoveYue(
+                    "https://www.facebook.com/ajax/pagelet/generic.php/AllFriendsAppCollectionPagelet?data=%7B%22collection_token%22%3A%22"
+                    + collection_token + "%22%2C%22cursor%22%3A%22" + cursor + "%22%2C%22tab_key%22%3A%22friends%22%2C%22profile_id%22%3A"
+                    + profile_id + "%2C%22overview%22%3Afalse%2C%22ftid%22%3Anull%2C%22order%22%3Anull%2C%22sk%22%3A%22friends%22%2C%22importer_state%22%3Anull%7D&__user=" + user_id
+                    + "&__a=1&__dyn=7AmajEyl2qm2d2u6aEB191qeCwKyWgyi8zQC-K26m6oKezob4q68K5Uc-dy88axbxjx27W88ybx-qCEWfybDGcCxC2e78"
+                    + "&__req=g&__rev=" + revision
+                    ,
+                    "GET", "", false, "");
+
+                rgx = @"(?<=https:\/\/www\.facebook\.com\/)\w+?(?=\?fref=pb&amp;hc_location=\w?"" tabindex=)";
+                myMatch = (new Regex(rgx)).Match(respHtml);
+                while (myMatch.Success)
+                {
+                    //ignore all digital id
+                    Regex rex = new Regex(@"^(\.|\d)+$");
+                    if (rex.IsMatch(myMatch.Groups[0].Value))
+                    {
+                        continue;
+                    }
+                    if ((gFriends == null) || (!gFriends.Contains(myMatch.Groups[0].Value)))
+                    {
+                        gFriends.Add(myMatch.Groups[0].Value);
+                        //datr = myMatch.Groups[0].Value;
+                    }
+                    myMatch = myMatch.NextMatch();
+                }
+
+                rgx = @"(?<=pagelet_timeline_app_collection_" + collection_token.Replace("%3A", ":") + @""",{""__m"":""\w+_\w+_\w+""},"").*?(?="")";
+                myMatch = (new Regex(rgx)).Match(respHtml);
+                if (myMatch.Success)
+                {
+                    cursor = myMatch.Groups[0].Value;
+                }
+                else //to the end of friends list
+                {
+                    return 1;
+                }
+                cursor = ToUrlEncode(cursor);
+            }
         }
 
-        /*
-         * Schedule an Appointment
-         */
-
-        public int create()
-        {            
-            setLogT("post create..");
-        post1:
-            string url = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppWelcome.aspx?p=Gta39GFZnstZVCxNVy83zTlkvzrXE95fkjmft28XjNg%3d";
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            HttpWebResponse resp = null;
-            setRequest(req);
-            req.Method = "POST";
-            req.Referer = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppWelcome.aspx?p=Gta39GFZnstZVCxNVy83zTlkvzrXE95fkjmft28XjNg";
-            if (gCookieContainer != null)
-            {
-                req.CookieContainer.Add(gCookieContainer);
-            }
-            if (
-                writePostData(req,
-                "__EVENTTARGET=ctl00%24plhMain%24lnkSchApp&__EVENTARGUMENT=&__VIEWSTATE=y4H3v3Vf%2FKZIy3YqiTkuKz7SPKXXlEpmuZ6GTMaXlw"
-                +"%2FHKbSmzf7waL3xHoK95pzY2hGK3rQDoi0q42%2FCvrGonzU4V1igrr2pJTSqGmr3ZQ2FwazRCivxeWczISS4s8cW2oncbOVUDW"
-                +"iKT2sNb81jqPJmJE8JM5q7FHALaX6u15kv63n1leTZCklLZEAmHtv3lfm421fOeGjgcyRXH2ZgQ33nptPQGy62wi4gLMCwtrZoUehF"
-                +"%2BVdo%2FxRXQdIoGl4fWucqgyMPdm3Dt3OzWBkr1ITCjCCNf%2B5Q5VpQzGY%2FeF0I4cTDQYu2Fk7Sy%2Fv8DL%2B30q3joC3mY"
-                +"%2BmIuYz7atZ9oPYaonhVsC8%2F0X0CxEB2%2BMI4WlifqjcMuFQbd9Bn81oFWAF0oeYDqYbtcod5TC98aBzx%2FI5yviLBP6%2BUsQ09s5NtLuwCF33GfnbeqS91t6YrUacR1ZcQEYzXMrgzbt2JtIR8SP"
-                +"%2Bmje%2F9xQfALETYlRPiejibFjMfwVrlGc2%2BSWg1zahT3Sn8gdQ%3D&____Ticket=1&__EVENTVALIDATION=2VOscnt3wUrYVEmbEBdVVV"
-                +"%2BecrUfaQrd3%2FYGJ0r9LAEFBQ%2F%2BIAGAtGVyE4iBprD%2Bio9a0iKK8SGy0TT0hF2vJQ%3D%3D")
-                < 0)
-            {
-                return -2;
-            }
-            string respHtml = "";
-
-            try
-            {
-                resp = (HttpWebResponse)req.GetResponse();
-            }
-            catch (WebException webEx)
-            {
-                if (webEx.Status == WebExceptionStatus.Timeout)
-                {
-                    setLogT("post Timeout..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.NameResolutionFailure)
-                {
-                    setLogT("post NameResolutionFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.UnknownError)
-                {
-                    setLogT("post UnknownError..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectFailure)
-                {
-                    setLogT("post ConnectFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectionClosed)
-                {
-                    setLogT("post ConnectionClosed..");
-                    goto post1;
-                }
-                else
-                {
-                    setLogT("other WebExceptions..");
-                    return -2;
-                }
-            }
-            if (resp.StatusCode == HttpStatusCode.OK)
-            {
-                string html = resp2html(resp);//dyyr
-            }
-            else
-            {
-                goto post1;
-            }
-            //gCookieContainer = req.CookieContainer.GetCookies(req.RequestUri);
-            resp.Close();
-            return 1;
-        }
-
-
-        public int selectLocation()
-        {
-            setLogT("post selectLocation..");
-        post1:
-            string url = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppScheduling.aspx";
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            HttpWebResponse resp = null;
-            setRequest(req);
-            req.Method = "POST";
-            req.Referer = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppWelcome.aspx?p=Gta39GFZnstZVCxNVy83zTlkvzrXE95fkjmft28XjNg";
-            if (gCookieContainer != null)
-            {
-                req.CookieContainer.Add(gCookieContainer);
-            }
-            if (
-                writePostData(req, "__VIEWSTATE=U8AJVYNixXRfz4bH8v8%2F0vyB2azTOxRhlu62TVP4Amy7PraT6FvK3uGzIJqpRnwHPLQBDjit0Tjqobj9c3TrNCXUsyOncX0WxstNd60kTj8"
-+ "%2Bd2aNdNAHhWwFQbihaPgQt5lqYnaTge7vlpLbWpGs1joqc1zDofYD9mVpEFI%2FO2z%2Bek3MI8aSix%2FDSg5erl%2B8uRJ1JwBoHBwR2so02sjNNZGjkrCqF8m6WqbVdzjMAnEEhrSuy7sSn"
-+ "%2Fpfy54zWWFpQpBwD1OXAtltLg1C%2FT5KV5tpWKQHxmuq4JXjIQ4EPdT%2BSZFl9taV2DiZDT3X0kkl%2FyxDYRbAo0OU88hhWUeJf"
-+ "%2BMdRSC7C6y3pzBtisn2c10P9Dk6t%2FZxewskMJAIsnN5a7cAQr3%2BVEWgDVMdZBow0Ylr7q6CFokZaUVebCMLBTFOnvnI9Zjbxg"
-+ "%3D%3D&ctl00%24plhMain%24cbo"
-+ "VAC=" + gVACity
-+ "&ctl00%24plhMain%24btnSubmit=%E6%8F%90%E4%BA%A4&ctl00%24plhMain%24hdnValidation1"
-+ "=%E8%AF%B7%E9%80%89%E6%8B%A9%EF%BC%9A&ctl00%24plhMain%24hdnValidation2=%E7%AD%BE%E8%AF%81%E7%94%B3%E8"
-+ "%AF%B7%E4%B8%AD%E5%BF%83&ctl00%24plhMain%24hdnValidation3=%E5%B1%85%E4%BD%8F%E5%9B%BD&____Ticket=2&__EVENTVALIDATION"
-+ "=Vl39F6qwZOICJpTa9PcH0gV%2FyeRGOfg5uQqROs1LRKtDZsxgCLg9LzkK%2F0bKajvKLYu88iUHiiiQQjV%2FynffMgplscVinn0GMf5vgACt66c"
-+ "%3D")
-                < 0)
-            {
-                return -2;
-            }
-            string respHtml = "";
-
-            try
-            {
-                resp = (HttpWebResponse)req.GetResponse();
-            }
-            catch (WebException webEx)
-            {
-                if (webEx.Status == WebExceptionStatus.Timeout)
-                {
-                    setLogT("post Timeout..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.NameResolutionFailure)
-                {
-                    setLogT("post NameResolutionFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.UnknownError)
-                {
-                    setLogT("post UnknownError..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectFailure)
-                {
-                    setLogT("post ConnectFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectionClosed)
-                {
-                    setLogT("post ConnectionClosed..");
-                    goto post1;
-                }
-                else
-                {
-                    setLogT("other WebExceptions..");
-                    return -2;
-                }
-            }
-            if (resp.StatusCode == HttpStatusCode.OK)
-            {
-                string html = resp2html(resp);//dyyr
-            }
-            else
-            {
-                goto post1;
-            }
-            //gCookieContainer = req.CookieContainer.GetCookies(req.RequestUri);
-            resp.Close();
-            return 1;
-        }
-
-        public int selectType()
-        {
-            setLogT("post selectType..");
-        post1:
-            string url = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppSchedulingGetInfo.aspx";
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            HttpWebResponse resp = null;
-            setRequest(req);
-            req.Method = "POST";
-            req.Referer = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppSchedulingGetInfo.aspx";
-            if (gCookieContainer != null)
-            {
-                req.CookieContainer.Add(gCookieContainer);
-            }
-            if (
-                writePostData(req, "__EVENTTARGET=&__EVENTARGUMENT=&__LASTFOCUS=&__VIEWSTATE=U8AJVYNixXRUwcXUTmqrf7zAU4hEbOgeUh39xR6xe%2Ft7RBN"
-+"%2BatU43OaTXZpQSjNY8%2BVbFRnhLbL8GKP7XABq1YaErm%2B4SpFT2KZuLwVM4nPGsea8q%2FeCfvd%2F7REf2AN0qrIWP41Q7Ci2GJ5km7B"
-+"%2BTj0Of4uPtiTFviciojgqAaiJk6QUz7SjB0Kf1Pwbaq58A0R5YHTMEFGrPA70l3sudHH3yb5T3jbsRpBBoXMYtCNz1lgy4fzmXo1xTMEbdFEfRAH"
-+"%2BGqY4utRjTpf3hhCxLTVCNM1F9Cf%2FUZhFqxtmjtBUgrSJEs4QrWBEgaMhgI29WAsm1DfqrBAhzeVuaxHpyq4l7pN49umb07dVPZLmSLk"
-+"%2FtujFJ91uOkLTdzXDPoxtFCqaMUdfM0x9iEDYwDko47wf9xiTl3JRFGYcpVDRFzFtlu9VekNLQzGtiUal%2F%2FfwUevuu4WrCLvQnFSR5b85"
-+"%2Fx8WoEobIp1j9ur40h8ldh%2FKxfovLNtWAl%2Fg5rZlHeOd6vU9aEnxn2EZv2ROEONsNDGd6bN6VhEkBoLW1zAjG%2B1t5SelnIeFCq0IERuNZFbcDWf7"
-+"%2BG3h8Wdkqkm5wAcdvj%2FdIp7UkCcWdSMImqiXky%2FKdQgsr4bwLJnz30kK2ugxKp7xmuTRxciPgUon5Yb0rEdkYhGax9YQayZi0XG7ZtJzpZrK3fHVu4xjMcwxx6qmv7ltoTbWPIyq2TU5ElQz0zJbstGo2msU4lmBwC6CcLuD3zkJJtadJ65waQ8V2"
-+"%2FiBlGHGlIhe1%2FofgahynsoVroQ6xs2ixsNxY%2BqDEUZMeWkzqbmV7urhUncKVO7A%2F3I6%2FVoKudxB32%2FRGgWn0JDZksn3T"
-+"%2FLjcEdjXbfeuZTXNsY4RX1KkaaWexAlria6D0ougaRkLzZ%2BNuLViQS5579XUwbe11ZhW52%2FvnRS%2FMejWh172fWzGvl0hVyUiPSkx"
-+"%2B4380uD5na5%2F2pOVlsfq%2BS4oqsQgiQfDehJcaZ7bco29SR2vGHIpusT1lNInltj8mYIlta6eWIQpjfthTnQCO%2B9Id5f4yCpf7lV7vQ9s9BrbkGPm2c"
-+"%2BllCs6HuH28TZ61w8K5UIk9W18cdLT8fd6EKaiigwTLuMlYJz644I1ckubvqz3Io34l%2Fs8YW2o4XP790vToplHFBzShu6fJ%2BDc6UC6EnQ"
-+"%2BdbRwxp7T5RYdp3pV4chRa7u74B0m5cBdXWw1QR4pn4szRnLn%2FQ0S%2BxrQlMfJCg0nOkazcJxJw0myYMBzqjMz5LqPyntix5qbCU"
-+"%2BJptjClwe%2F45yFogTAu9RInEiX%2FVwyoZ9WB05nOdWAoPXQfi%2BrTzXv%2BoTRw%3D%3D&ctl00%24plhMain%24tbxNumOfApplicants"
-+"=1&ctl00%24plhMain%24cboVisaCategory=13&ctl00%24plhMain%24btnSubmit=%E6%8F%90%E4%BA%A4&ctl00%24plhMain"
-+"%24hdnValidation1=%E8%AF%B7%E8%BE%93%E5%85%A5%EF%BC%9A&ctl00%24plhMain%24hdnValidation2=%E6%9C%89%E6"
-+"%95%88%E4%BA%BA%E6%95%B0%E3%80%82&ctl00%24plhMain%24hdnValidation3=%E6%8A%A5%E5%90%8D%E4%BA%BA%E6%95"
-+"%B0%E5%BF%85%E9%A1%BB%E4%BB%8B%E4%BA%8E1%E5%92%8C++&ctl00%24plhMain%24hdnValidation4=%E7%AD%BE%E8%AF"
-+"%81%E7%B1%BB%E5%88%AB&____Ticket=8&__EVENTVALIDATION=LgGliIkkUxxirzupetnKohQ9X2Ck3WdINu939id2MnTg091fU"
-+"%2F6UXnEZnwn63l2JoJ4tIPqrdbsBNufKc6PbfYIhfNKAdbB1%2BwfWRGYwopZfspcAb4K04xbR0Uk0tEMx")
-                < 0)
-            {
-                return -2;
-            }
-            string respHtml = "";
-
-            try
-            {
-                resp = (HttpWebResponse)req.GetResponse();
-            }
-            catch (WebException webEx)
-            {
-                if (webEx.Status == WebExceptionStatus.Timeout)
-                {
-                    setLogT("post Timeout..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.NameResolutionFailure)
-                {
-                    setLogT("post NameResolutionFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.UnknownError)
-                {
-                    setLogT("post UnknownError..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectFailure)
-                {
-                    setLogT("post ConnectFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectionClosed)
-                {
-                    setLogT("post ConnectionClosed..");
-                    goto post1;
-                }
-                else
-                {
-                    setLogT("other WebExceptions..");
-                    return -2;
-                }
-            }
-            if (resp.StatusCode == HttpStatusCode.OK)
-            {
-                string html = resp2html(resp);//dyyr
-            }
-            else
-            {
-                goto post1;
-            }
-            //gCookieContainer = req.CookieContainer.GetCookies(req.RequestUri);
-            resp.Close();
-            return 1;
-        }
-
-
-        public int fillInDetails()
-        {
-            setLogT("post fillInDetails..");
-        post1:
-            string url = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppSchedulingVisaCategory.aspx";
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            HttpWebResponse resp = null;
-            setRequest(req);
-            req.Method = "POST";
-            req.Referer = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppSchedulingGetInfo.aspx";
-            if (gCookieContainer != null)
-            {
-                req.CookieContainer.Add(gCookieContainer);
-            }
-            if (
-                writePostData(req, "__VIEWSTATE=WeAT97QH0avIEHaB5uNheUxvgfsGBJeySDR%2BhmFKuZ2qnOYUkFBX%2B96Q8wMpOhOSdrvAfS65N3kIscxaAqNozuKasxwdnKIQi7FJZHD1IjkljVI9t1AmYDfOu"
-+ "%2FXygUero2%2FfblS4TK1N%2FAGIVoWnkSWmXgr8RAEGTius35BLfCOsc27Tu%2BYrpxjhM9sPG2OWv%2Bo2T8szuBum8wkWrB%2BQ1UXi"
-+ "%2Ft7Py8qOXStxE2jQ79IiGfoKc%2FTZ%2FVdFNtwgybKTLyEINle8KsJb7XkjeaVvkYXPA2nwErgv5L8zJ%2BlIx9xssAai3qgooQxB1uxoG6JOpANA"
-+ "%2Flo%2BTk38yAoNg04%2BqDHosynFp1TsaY7VpszHnZX3QCceB4h2TYr94uEpYtMibWoTPUvpKtcD8va2a6SAau5nkMdUDq%2FtmEwDMHvA0Qo0oBtjWCjc6kKvD3m86v15l9L8IE4ZUaykUJtbF3wEpaCTHEB56K"
-+ "%2Bh4SvaU%2B9H3DmAsiLkG%2BeXm6wGxt9NhamIWm1N5ASb0NyhTaYXcxtQq%2FBbptsBMcpFaz8NsapfoVxHPHy%2BU40dsY6L8PC2d07OD3ulzlqmc"
-+ "%2BUJV4nBX5td1VH4ha63CUfJz47CLEveg2oAqY52C5wA5y2WMefNCdRYa9PMV0O2aSe6UagqXzfPj04zTFWeP08%2BfOg8tZR7hdA0DdNseogNaaCAIVJVIi"
-+ "%2BamjFmJCPxxe9BOh3Dwfc9zLeCNW%2FHsk0RfEHOD8usvDdJpXdw9ys8HY8%2BQLs%2BkitAlDzLD9VMpGSH%2BCgOjgVnSegb1wdXprg0BiNBziuo"
-+ "%2FNi0VdRf8H8KyGmXTKnV44BLh6vrKvZjnDrZpvVrB%2FKxU8b4ixNUho4sgvwgACwTjLmBFlyV5aXyZEvvgq%2B8cXWL%2Fj6fGm5C"
-+ "%2BNvedysqZOqCBxmmSRuyhW0lWY7rxH4sZoEhdOK5MY3d%2FYkJuhp4%2FzLwCo8sB%2BlIVHwT3WXh348InV1UQ14SeiYLz86LmHmf2vjkPgdJ11BpMyCcNRMCrzaJ"
-+ "&ctl00%24plhMain%24repAppVisaDetails%24ctl01%24tbxPassportNo="
-+ gPassport
-+  "&ctl00%24plhMain%24repAppVisaDetails"
-+ "%24ctl01%24cboTitle=" 
-+ gTitle
-+ "&ctl00%24plhMain%24repAppVisaDetails%24ctl01%24tbxFName="
-+ gFname
-+ "&ctl00%24plhMain"
-+ "%24repAppVisaDetails%24ctl01%24tbxLName="
-+ gLastName
-+ "&ctl00%24plhMain%24repAppVisaDetails%24ctl01%24tbxSTDCode="
-+ gSTDCode
-+ "&ctl00%24plhMain%24repAppVisaDetails%24ctl01%24tbxContactNumber="
-+ gContactNumber
-+ "&ctl00%24plhMain%24repAppVisaDetails"
-+ "%24ctl01%24tbxMobileNumber="
-+ gMobile
-+ "&ctl00%24plhMain%24repAppVisaDetails%24ctl01%24tbxEmailAddress="
-+ gEmail
-+ "&ctl00%24plhMain%24btnSubmit=%E6%8F%90%E4%BA%A4&ctl00%24plhMain%24hdnValidation1=%E8%AF%B7%E8"
-+ "%BE%93%E5%85%A5%E7%94%B3%E8%AF%B7%E4%BA%BA%E7%9A%84%E6%8A%A4%E7%85%A7%E5%8F%B7%E7%A0%81%E3%80%82&ctl00"
-+ "%24plhMain%24hdnValidation2=%E8%AF%B7%E7%94%B3%E8%AF%B7%E4%BA%BA%E6%B2%A1%E6%9C%89%E9%80%89%E6%8B%A9"
-+ "%E6%A0%87%E9%A2%98%E3%80%82&ctl00%24plhMain%24hdnValidation3=%E8%AF%B7%E8%BE%93%E5%85%A5%E7%BB%99%E5"
-+ "%AE%9A%E5%90%8D%E7%A7%B0%E7%9A%84%E7%94%B3%E8%AF%B7%E4%BA%BA%E6%B2%A1%E6%9C%89%E3%80%82&ctl00%24plhMain"
-+ "%24hdnValidation4=%E8%AF%B7%E8%BE%93%E5%85%A5%E5%A7%93%E7%94%B3%E8%AF%B7%E4%BA%BA%E6%B2%A1%E6%9C%89%E3"
-+ "%80%82&ctl00%24plhMain%24hdnValidation5=%E8%AF%B7%E8%BE%93%E5%85%A5%E6%89%8B%E6%9C%BA%E5%8F%B7%E7%A0"
-+ "%81%E3%80%82%E7%94%B3%E8%AF%B7%E4%BA%BA%E6%B2%A1%E6%9C%89%E3%80%82&ctl00%24plhMain%24hdnValidation6="
-+ "%E8%AF%B7%E8%BE%93%E5%85%A5%E6%9C%89%E6%95%88%E7%9A%84%E7%9A%84STD%E4%BB%A3%E7%A0%81%E4%B8%BA%E7%94%B3"
-+ "%E8%AF%B7%E4%BA%BA%E6%B2%A1%E6%9C%89%E3%80%82&ctl00%24plhMain%24hdnValidation7=%E8%AF%B7%E8%BE%93%E5"
-+ "%85%A5%E6%9C%89%E6%95%88%E7%9A%84%E7%94%B5%E5%AD%90%E9%82%AE%E4%BB%B6%E5%9C%B0%E5%9D%80%EF%BC%8C%E7%94"
-+ "%B3%E8%AF%B7%E4%BA%BA%E6%B2%A1%E6%9C%89%E3%80%82&ctl00%24plhMain%24hdnValidation8=%E8%AF%B7%E5%AF%B9"
-+ "%E7%94%B3%E8%AF%B7%E4%BA%BA%E6%B2%A1%E6%9C%89%E8%BE%93%E5%85%A5%E6%9C%89%E6%95%88%E7%9A%84GWFNo%E7%9A"
-+ "%84%E3%80%82&ctl00%24plhMain%24hdnValidation9=%E8%AF%B7%E9%80%89%E6%8B%A9%E7%AD%BE%E8%AF%81%E7%B1%BB"
-+ "%E5%88%AB%E7%9A%84%E7%94%B3%E8%AF%B7%E4%BA%BA%E6%B2%A1%E6%9C%89%E3%80%82&____Ticket=5&__EVENTVALIDATION"
-+ "=IRo%2B19B8GWQ0OsjXOo0KEnDN30QgiISDxFhl%2B5xNoJsaPrL5SnVxA71owC9Ut3NCv8sN8DQyGEJvoj5zZZBUfvm6DJ4TjRHEgxWcpAhD09ilgZzdNg0AZcbPXYvWZBlkTYkBvOnDCR9d8zC"
-+ "%2FHCuFZY5%2BLho4j256oqb2KcKZpHUqK95b2bfsbS8uK%2FM0fsrtm9ocbEzVS3uK9HwxuQccwA%3D%3D")
-                < 0)
-            {
-                return -2;
-            }
-            string respHtml = "";
-
-            try
-            {
-                resp = (HttpWebResponse)req.GetResponse();
-            }
-            catch (WebException webEx)
-            {
-                if (webEx.Status == WebExceptionStatus.Timeout)
-                {
-                    setLogT("post Timeout..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.NameResolutionFailure)
-                {
-                    setLogT("post NameResolutionFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.UnknownError)
-                {
-                    setLogT("post UnknownError..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectFailure)
-                {
-                    setLogT("post ConnectFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectionClosed)
-                {
-                    setLogT("post ConnectionClosed..");
-                    goto post1;
-                }
-                else
-                {
-                    setLogT("other WebExceptions..");
-                    return -2;
-                }
-            }
-            if (resp.StatusCode == HttpStatusCode.OK)
-            {
-                string html = resp2html(resp);//dyyr
-            }
-            else
-            {
-                goto post1;
-            }
-            //gCookieContainer = req.CookieContainer.GetCookies(req.RequestUri);
-            resp.Close();
-            return 1;
-        }
-
-        public int pickDate()
-        {
-            setLogT("post pickDate..");
-        post1:
-            string url = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppSchedulingInterviewDate.aspx";
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            HttpWebResponse resp = null;
-            setRequest(req);
-            req.Method = "POST";
-            req.Referer = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppSchedulingVisaCategory.aspx";
-            if (gCookieContainer != null)
-            {
-                req.CookieContainer.Add(gCookieContainer);
-            }
-            if (
-                writePostData(req, "__EVENTTARGET=ctl00%24plhMain%24cldAppointment&__EVENTARGUMENT="
-+ gDays
-+ "&__VIEWSTATE=U8AJVYNixXSq9VLDbRaZ8nMA"
-+ "%2BMPSDsEGivqjUsubuqrcpK53JEiQp99OoAyRN33bd%2Fmkv6DPLEOZox163uZqP6i1E4ngRhMmu7EYUfGh7SW19Ih1rZ86kozkMPBIkYfjqEdgOriF4ijbK63KhfrSkKRUhfQUQyUUuC9JDQsdmcdO0Y7"
-+ "%2BAUppCiZZlbGgdvCkbaWCUQGjwaNrorzaOXsKt6naeLs3YOVYHs14cg7P5SCCi0aHmpO8pMcI0bvNVOwtV333bmzvfpr3Kcv866D56yEAuErEQq43C08Swqmx754IBnqw0Z4tMMaojg8PN9w"
-+ "%2BpuMySi%2B9l3oGMQDOs%2FoGFtQOt7QFtPeEWCCK0hnU8YaKln6K37yL%2BzFkLyq5EL8RNlVGTZgz7e2v%2Fo9sYQz8x%2FVOQjjZ3jtWtcF9bJQyCU38iKjPabJa0FNOJVI64XS08P8h2MeuqqBdqFagMGorkOBsDxIY5rPF1EEnKgSloH"
-+ "%2Fn8FurXHDR1fI7BypOaAHscFSGVE%2FM5p3QTbsnkrvVV1suHPCzkB8vdkS6jPW8RH3Shr7puQTWhODtg6QeLMec%2BsKfqSaUoF0KnP4Rxyt6bdoi"
-+ "%2FrVm4SuWRqjcfkAunmXPh1nk%2BnaLMjDMKOVZsuklOCv6pjkgdmpvLRDfepzqHVpde0E9Xd5wT6r6nnzHebTnQBSEVpi%2BTBkGvtbNhibIOXKbAQEaRyx8tHH4ZV2Fs6FZ7MHhwzrR4cFc4AHiA"
-+ "%2Fv%2BFsFF2JwxIwf5wUC46goo9YMiM%2B7w4eWKFnvOXOeyMNqSUN2VqaqoQ5AAYgmQ%2B1VvFjlBpc%2FTYfy76W89%2FFt3traK9pFszwzkL1GUCL0qToKFRlFMuRtEgA3515dPcKkSpkv3bqqEj1jws"
-+ "%2BJYdF8w3ENSh2rNm%2FGFzTxN0QMlnfXU4E60kA8ctXf9twe9cvWszNZxSZaD8H0jqkDafd4%2BcBCd9P%2F2MWF9X6u6mQBFILjdegtPa1udgvEMQ"
-+ "%2Fq3ORcRxa0O0mQ7RwYvpV8E%2B%2Bp5Qm9LhwTwpIXMfhmlh%2FAYRXjtz7PtaXmKnSv%2FSYv9m655pXWGKdULeC%2Bpl31NJyK0BvexdQ3Jw2ARueXSKkfiaeQ"
-+ "%2B3bd59wZnqA3N5ghq5PBSlzD0%2Fexjtyn0zZx%2Fa1OblwHiQ2TtLndSutRxC%2FlMTO5Ms3nxkEkVtWvjF0CBjI4GYqOoquehX0X1N37htIbMYdzwQB9"
-+ "%2FqIN%2Bo5dDZ04T4Kg0KLeHlWZbkgKQMva2e1hxhD9Nin5BST6RwiJpk7WyWOyaCSAIFrvMvQONTr74ummW3KX8CWjF8wkTyh7Cf5yt53xqvHsxnHculsA5zFDfW5RN3jYEQSRM55Q3Uurh7Qx1l5wuTl60HjfyQHkNDadlhNeM"
-+ "%2BH0RaRfKX2KGDrMKO1bZJ2tIjDEaL%2FPDH6%2BpZfg48btx6IgaRzLdtIql44JqNH98L2QrDaySRzYqPmCM4Kqg3Lv7LB2UuX"
-+ "frpUGniYYIqObxFeLT6bcDtYmwYov5t1yhmS2hTGOPuJyW5UIEYaovfGNj6qluQbEo6iszcj2AsYngPunNX68em9Nl9feehoVEgerTD6XTzA4j0Tm9f5NHuW37j9pGRoJuXedjV6YuT"
-+ "%2BeXZ%2F0SKG9lyTYxA1%2BwXlxURYQL7rqrXyNr7wx2BSDcolBFd3TDHfEaDtJ%2F2LoDGqeGtqrnEmRu56tVKqKLqMw%2FOhZ11pBxvyGgq4ohxIH3YUZttTKVR9ppC8dRP2L"
-+ "%2Fiuqnr2fyNg1JP0M2ch%2FiSsupxAN%2FvZohNnCsFqRd9IpT5zrGBisXdAcgTxWU6%2BWHEfLjuL9B66NmlRXpA%2FlcKWhbh9vkgPs0FbJj5ey6c9PAx90o68vbLiDipMHVNZLPJcv0Oc"
-+ "%2F4Ejwzfm%2FmnLS3WkMXm67vsA%3D%3D&____Ticket=6&__EVENTVALIDATION=5u6H2uzLeMjuSNA%2FL1X%2BYh9C%2BpKtOLIEP3GLFHkoPO65OWB"
-+ "%2FexoIoD6a%2BmOOgbpKHCVQOf2ttLi%2FdaB61bgwKo5mPKjQw3lejTdS39kZuoSRGuTRvh8e1Jm%2F89Dsn7yFIDU0MXA1IlqVZWU4j6BbNiFuh2C"
-+ "%2F%2BE0hF0WECyWfYuZw7Zb%2BxyEt3571jSWeS1JzjkHovW7D9FOgw3Xk%2FnGr%2FlvUwjVlSYZVHBwhywU2xlXjCdQxCC7bHE7WXzrIDe0VgRZJxwLxXwAnwhtyBUCVVaqK4"
-+ "%2BKfm11XcSAhRHKQKrwpdooVj%2F9lxgKefXwobAgfKd71vrmXHyx1OOV2jxUSsbJ%2Fn4J4tN%2FJ%2BwTjobYWnjcLdsin5Cj"
-+ "s8ryyOyGxtAjCw15hDBn7ZgkoioJq0vAV0z0k9WMfsd1ZeaZACLkwCjWJypHjXnDzFRAGie9yTFfR")
-                < 0)
-            {
-                return -2;
-            }
-            string respHtml = "";
-
-            try
-            {
-                resp = (HttpWebResponse)req.GetResponse();
-            }
-            catch (WebException webEx)
-            {
-                if (webEx.Status == WebExceptionStatus.Timeout)
-                {
-                    setLogT("post Timeout..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.NameResolutionFailure)
-                {
-                    setLogT("post NameResolutionFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.UnknownError)
-                {
-                    setLogT("post UnknownError..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectFailure)
-                {
-                    setLogT("post ConnectFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectionClosed)
-                {
-                    setLogT("post ConnectionClosed..");
-                    goto post1;
-                }
-                else
-                {
-                    setLogT("other WebExceptions..");
-                    return -2;
-                }
-            }
-            if (resp.StatusCode == HttpStatusCode.OK)
-            {
-                string html = resp2html(resp);//dyyr
-            }
-            else
-            {
-                goto post1;
-            }
-            //gCookieContainer = req.CookieContainer.GetCookies(req.RequestUri);
-            resp.Close();
-            return 1;
-        }
-
-        public int pickTime()
-        {
-            setLogT("post pickTime..");
-        post1:
-            string url = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppSchedulingInterviewDate.aspx";
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
-            HttpWebResponse resp = null;
-            setRequest(req);
-            req.Method = "POST";
-            req.Referer = "https://www.visaservices.org.in/DIAC-China-Appointment/AppScheduling/AppSchedulingInterviewDate.aspx";                           
-            if (gCookieContainer != null)
-            {
-                req.CookieContainer.Add(gCookieContainer);
-            }
-            if (
-                writePostData(req, "")//dyyr; To be continued
-                < 0)
-            {
-                return -2;
-            }
-            string respHtml = "";
-
-            try
-            {
-                resp = (HttpWebResponse)req.GetResponse();
-            }
-            catch (WebException webEx)
-            {
-                if (webEx.Status == WebExceptionStatus.Timeout)
-                {
-                    setLogT("post Timeout..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.NameResolutionFailure)
-                {
-                    setLogT("post NameResolutionFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.UnknownError)
-                {
-                    setLogT("post UnknownError..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectFailure)
-                {
-                    setLogT("post ConnectFailure..");
-                    goto post1;
-                }
-                if (webEx.Status == WebExceptionStatus.ConnectionClosed)
-                {
-                    setLogT("post ConnectionClosed..");
-                    goto post1;
-                }
-                else
-                {
-                    setLogT("other WebExceptions..");
-                    return -2;
-                }
-            }
-            if (resp.StatusCode == HttpStatusCode.OK)
-            {
-                string html = resp2html(resp);//dyyr
-            }
-            else
-            {
-                goto post1;
-            }
-            //gCookieContainer = req.CookieContainer.GetCookies(req.RequestUri);
-            resp.Close();
-            return 1;
-        }
 
         public void loginT()
         {
-            if (1 == 2)
+            if (!debug)
             {
-                setLogT("please input username and password!");
-                return;
+                username = inputT.Text.Replace("@","%40");
+                password = textBox1.Text;
+                if (inputT.Text.Equals("") || textBox1.Text.Equals(""))
+                {
+                    setLogT("please enter username and password");
+                    return;
+                }
             }
+            
             while (true)
             {
                 if (rate.Text.Equals(""))
@@ -1231,9 +758,34 @@ namespace WHA_avac
 
         public void autoT()
         {
+            if (urlList.InvokeRequired)
+            {
+                delegate2 sl = new delegate2(delegate()
+                {
+                    deleteB.Enabled = false;
+                });
+                urlList.Invoke(sl);
+            }
+            else
+            {
+                deleteB.Enabled = false;
+            }
+
             if (urlList.Items.Count == 0)
             {
                 setLogT("empty user list! please import a userID file");
+                if (urlList.InvokeRequired)
+                {
+                    delegate2 sl = new delegate2(delegate()
+                    {
+                        deleteB.Enabled = true;
+                    });
+                    urlList.Invoke(sl);
+                }
+                else
+                {
+                    deleteB.Enabled = true;
+                }
                 return;
             }
             if (!gLoginOkFlag)
@@ -1241,20 +793,45 @@ namespace WHA_avac
                 loginT();
                 if (!gLoginOkFlag)
                 {
+                    if (urlList.InvokeRequired)
+                    {
+                        delegate2 sl = new delegate2(delegate()
+                        {
+                            deleteB.Enabled = true;
+                        });
+                        urlList.Invoke(sl);
+                    }
+                    else
+                    {
+                        deleteB.Enabled = true;
+                    }
                     return;
                 }
             }
-            
+
             while (true)
             {
                 for (int i = 0; i < urlList.Items.Count; i++)
                 {
-                    while (probe(urlList.GetItemText(urlList.Items[i])) == -1)
+                    int r1 = 0;
+                    while ((r1 = probe(urlList.GetItemText(urlList.Items[i]))) == -1)
                     {
                         gLoginOkFlag = false;
                         loginT();
                         if (!gLoginOkFlag)
                         {
+                            if (urlList.InvokeRequired)
+                            {
+                                delegate2 sl = new delegate2(delegate()
+                                {
+                                    deleteB.Enabled = true;
+                                });
+                                urlList.Invoke(sl);
+                            }
+                            else
+                            {
+                                deleteB.Enabled = true;
+                            }
                             return;
                         }
                     }
@@ -1262,13 +839,31 @@ namespace WHA_avac
                     {
                         delegate2 sl = new delegate2(delegate()
                         {
-                            urlList.SetItemChecked(i, true);
+                            if (r1 == -2)
+                            {
+                                //red daiyyr
+                                failed++;
+                            }
+                            else
+                            {
+                                urlList.SetItemChecked(i, true);
+                                succeed++;
+                            }
                         });
                         urlList.Invoke(sl);
                     }
                     else
                     {
-                        urlList.SetItemChecked(i, true);
+                        if (r1 == -2)
+                        {
+                            //red
+                            failed++;
+                        }
+                        else
+                        {
+                            urlList.SetItemChecked(i, true);
+                            succeed++;
+                        }
                     }
                     
 
@@ -1290,7 +885,19 @@ namespace WHA_avac
 
             if (gFriends == null)
             {
-                setLogT("failed to get id");
+                if (urlList.InvokeRequired)
+                {
+                    delegate2 sl = new delegate2(delegate()
+                    {
+                        deleteB.Enabled = true;
+                    });
+                    urlList.Invoke(sl);
+                }
+                else
+                {
+                    deleteB.Enabled = true;
+                }
+                return;
             }
 
             int j = 0;
@@ -1298,10 +905,22 @@ namespace WHA_avac
             foreach (string str in gFriends){
                 string pattern = @"^";
                 string replacement = "1-1-";
-                result += Regex.Replace(str, pattern, replacement)+"\n";
+                result += Regex.Replace(str, pattern, replacement) + Environment.NewLine;
                 j++;
             }
             writeResult(result);
+            if (urlList.InvokeRequired)
+            {
+                delegate2 sl = new delegate2(delegate()
+                {
+                    deleteB.Enabled = false;
+                });
+                urlList.Invoke(sl);
+            }
+            else
+            {
+                deleteB.Enabled = false;
+            }
         }
 
         private void loginB_Click(object sender, EventArgs e)
@@ -1330,45 +949,6 @@ namespace WHA_avac
         }
 
         public delegate void delegate2();
-        public void addURL()
-        {
-            //string P = @"^http(s)?:\/\/([\w-]+\.)+[\w-]+$";//无法匹配下级页面
-            string P = @"^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
-            Match M = (new Regex(P)).Match(inputT.Text);
-            if (M.Success)
-            {
-            }else{
-                MessageBox.Show("invalid url!");
-                return;
-            }            
-            if (urlList.InvokeRequired)
-            {
-                delegate2 sl = new delegate2(delegate()
-                {
-                    urlList.Items.Add(inputT.Text);
-                    inputT.Text = "";
-                });
-                urlList.Invoke(sl);
-            }
-            else
-            {
-                urlList.Items.Add(inputT.Text);
-                inputT.Text = "";
-            }
-            string strCollected = string.Empty;
-            for (int i = 0; i < urlList.Items.Count; i++)
-            {
-                if (strCollected == string.Empty)
-                {
-                    strCollected = urlList.GetItemText(urlList.Items[i]);
-                }
-                else
-                {
-                    strCollected += "\n" + urlList.GetItemText(urlList.Items[i]) ;
-                }
-            }
-            writeFile(System.Environment.CurrentDirectory + "\\" + "urlList", strCollected);
-        }
 
         public void addIds()
         {
@@ -1473,6 +1053,7 @@ namespace WHA_avac
                     urlList.Items.Remove(urlList.CheckedItems[i]);
                 }
             }
+            /*
             string strCollected = string.Empty;
             for (int i = 0; i < urlList.Items.Count; i++)
             {
@@ -1486,6 +1067,7 @@ namespace WHA_avac
                 }
             }
             writeFile(System.Environment.CurrentDirectory + "\\" + "urlList", strCollected);
+             * */
         }
 
         private void addB_Click(object sender, EventArgs e)
@@ -1507,8 +1089,8 @@ namespace WHA_avac
             string result = Regex.Replace("12345", pattern, replacement);
             setLogT(result);
 
-            tokenValP = @"(?<=aa).*?(?=aa)";
-            myMatch = (new Regex(tokenValP)).Match("qqqqqaaqwdsfaafferaafe222aa2222444aa444444222faaloveaa");
+            rgx = @"(?<=aa).*?(?=aa)";
+            myMatch = (new Regex(rgx)).Match("qqqqqaaqwdsfaafferaafe222aa2222444aa444444222faaloveaa");
             while (myMatch.Success)
             {
                 setLogT(myMatch.Groups[0].Value);
@@ -1524,10 +1106,20 @@ namespace WHA_avac
             }
             else
                 setLogT("not match");
+
+            int aa;
+            if ((aa = 4) == 4)
+            {
+                setLogT(aa.ToString());
+            }
+        }
+
+        private void textBox1_keyPress(object sender, KeyPressEventArgs e)
+        {
+            if (e.KeyChar == '\r')
+            {
+                autoB.PerformClick();
+            }
         }
     }
 }
-
-//每个好友抓取内容过多 用RUBY正则测
-//翻页
-//失效时间

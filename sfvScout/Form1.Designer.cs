@@ -44,16 +44,18 @@
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
             this.button1 = new System.Windows.Forms.Button();
+            this.label6 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // loginB
             // 
-            this.loginB.Location = new System.Drawing.Point(276, 66);
+            this.loginB.Location = new System.Drawing.Point(105, 350);
             this.loginB.Name = "loginB";
             this.loginB.Size = new System.Drawing.Size(88, 36);
             this.loginB.TabIndex = 1;
             this.loginB.Text = "Login";
             this.loginB.UseVisualStyleBackColor = true;
+            this.loginB.Visible = false;
             this.loginB.Click += new System.EventHandler(this.loginB_Click);
             // 
             // autoB
@@ -61,7 +63,7 @@
             this.autoB.Location = new System.Drawing.Point(276, 12);
             this.autoB.Name = "autoB";
             this.autoB.Size = new System.Drawing.Size(218, 48);
-            this.autoB.TabIndex = 0;
+            this.autoB.TabIndex = 4;
             this.autoB.Text = "start";
             this.autoB.UseVisualStyleBackColor = true;
             this.autoB.Click += new System.EventHandler(this.autoB_Click);
@@ -80,7 +82,7 @@
             this.rate.Location = new System.Drawing.Point(75, 23);
             this.rate.Name = "rate";
             this.rate.Size = new System.Drawing.Size(68, 21);
-            this.rate.TabIndex = 4;
+            this.rate.TabIndex = 11;
             this.rate.Text = "500";
             this.rate.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.rate_KeyPress);
             // 
@@ -97,11 +99,11 @@
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("宋体", 9F);
-            this.label3.Location = new System.Drawing.Point(441, 362);
+            this.label3.Location = new System.Drawing.Point(353, 362);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(107, 12);
+            this.label3.Size = new System.Drawing.Size(119, 12);
             this.label3.TabIndex = 8;
-            this.label3.Text = "Copyright  Thomas";
+            this.label3.Text = "Copyright  Mushroom";
             // 
             // logT
             // 
@@ -116,23 +118,22 @@
             // 
             // addB
             // 
-            this.addB.Location = new System.Drawing.Point(398, 66);
+            this.addB.Location = new System.Drawing.Point(276, 66);
             this.addB.Name = "addB";
-            this.addB.Size = new System.Drawing.Size(96, 36);
-            this.addB.TabIndex = 11;
+            this.addB.Size = new System.Drawing.Size(106, 36);
+            this.addB.TabIndex = 5;
             this.addB.Text = "import";
             this.addB.UseVisualStyleBackColor = true;
             this.addB.Click += new System.EventHandler(this.addB_Click);
             // 
             // deleteB
             // 
-            this.deleteB.Location = new System.Drawing.Point(192, 12);
+            this.deleteB.Location = new System.Drawing.Point(388, 66);
             this.deleteB.Name = "deleteB";
-            this.deleteB.Size = new System.Drawing.Size(63, 23);
-            this.deleteB.TabIndex = 12;
+            this.deleteB.Size = new System.Drawing.Size(106, 36);
+            this.deleteB.TabIndex = 6;
             this.deleteB.Text = "delete";
             this.deleteB.UseVisualStyleBackColor = true;
-            this.deleteB.Visible = false;
             this.deleteB.Click += new System.EventHandler(this.deleteB_Click);
             // 
             // inputT
@@ -140,7 +141,9 @@
             this.inputT.Location = new System.Drawing.Point(75, 50);
             this.inputT.Name = "inputT";
             this.inputT.Size = new System.Drawing.Size(180, 21);
-            this.inputT.TabIndex = 13;
+            this.inputT.TabIndex = 2;
+            this.inputT.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textBox1_keyPress);
+
             // 
             // label4
             // 
@@ -153,12 +156,11 @@
             // 
             // urlList
             // 
-            this.urlList.Enabled = false;
             this.urlList.FormattingEnabled = true;
             this.urlList.Location = new System.Drawing.Point(14, 106);
             this.urlList.Name = "urlList";
             this.urlList.Size = new System.Drawing.Size(480, 244);
-            this.urlList.TabIndex = 15;
+            this.urlList.TabIndex = 7;
             // 
             // testLog
             // 
@@ -168,13 +170,16 @@
             this.testLog.Size = new System.Drawing.Size(905, 316);
             this.testLog.TabIndex = 16;
             this.testLog.Text = "";
+            this.testLog.Visible = false;
             // 
             // textBox1
             // 
             this.textBox1.Location = new System.Drawing.Point(75, 79);
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(180, 21);
-            this.textBox1.TabIndex = 17;
+            this.textBox1.TabIndex = 3;
+            this.textBox1.UseSystemPasswordChar = true;
+            this.textBox1.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textBox1_keyPress);
             // 
             // label5
             // 
@@ -187,19 +192,30 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(289, 357);
+            this.button1.Location = new System.Drawing.Point(172, 12);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.Size = new System.Drawing.Size(83, 32);
             this.button1.TabIndex = 18;
-            this.button1.Text = "test regx";
+            this.button1.Text = "test";
             this.button1.UseVisualStyleBackColor = true;
+            this.button1.Visible = false;
             this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(501, 362);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(41, 12);
+            this.label6.TabIndex = 19;
+            this.label6.Text = "label6";
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(931, 730);
+            this.ClientSize = new System.Drawing.Size(931, 381);
+            this.Controls.Add(this.label6);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.testLog);
@@ -241,6 +257,7 @@
         private System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Label label6;
     }
 }
 
