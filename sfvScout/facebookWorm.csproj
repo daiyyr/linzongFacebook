@@ -6,8 +6,8 @@
     <ProjectGuid>{EF3A09B8-F803-410A-8C98-03B6757B4B2E}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>WHA_avac</RootNamespace>
-    <AssemblyName>WHA_avac</AssemblyName>
+    <RootNamespace>facebookWorm</RootNamespace>
+    <AssemblyName>facebookWorm</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>

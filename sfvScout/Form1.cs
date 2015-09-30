@@ -19,6 +19,10 @@ namespace WHA_avac
     {
 
         bool debug = false;
+        string username = "";           
+        string password = "";
+   //     string username = "54739633%40qq.com";
+   //     string password = "dyyr0125";
 
         DateTime expireDate = new DateTime(2015, 10, 12);
 
@@ -30,8 +34,6 @@ namespace WHA_avac
         CookieCollection gCookieContainer = null;
 		string rgx;
 		Match myMatch;
-		string username = "";           //"54739633%40qq.com";
-        string password = "";           //"dyyr0125";
         bool gLoginOkFlag = false;
         List<string> gFriends = new List<string>();
         string collection_token = "";
@@ -41,6 +43,13 @@ namespace WHA_avac
         string revision = "";
         int succeed = 0;
         int failed = 0;
+        string gFileName = null;
+        FileStream aFile ;
+        StreamWriter sw;
+        int successInOneProbe = 0;
+        bool gForceToStop = false;
+        int SUMsuccessInOneProbe;
+        int iii;
 
         public delegate void setLog(string str1);
         public void setLogT(string s)
@@ -126,7 +135,7 @@ namespace WHA_avac
             DateTime t = GetNistTime();
             if (t == DateTime.MinValue)
             {
-                setLogT("请连接互联网");
+                setLogT("请连接互联网后重新启动程序");
                 autoB.Visible = false;
             }
             else
@@ -156,26 +165,40 @@ namespace WHA_avac
         }
         */
 
-        public static DateTime GetNistTime()
+        public DateTime GetNistTime()
         {
             DateTime dateTime = DateTime.MinValue;
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://nist.time.gov/actualtime.cgi?lzbc=siqm9b");
+//            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://nist.time.gov/actualtime.cgi?lzbc=siqm9b");
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://www.stdtime.gov.tw/chinese/home.aspx");
             request.Method = "GET";
             request.Accept = "text/html, application/xhtml+xml, */*";
             request.UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/6.0)";
             request.ContentType = "application/x-www-form-urlencoded";
             request.CachePolicy = new RequestCachePolicy(RequestCacheLevel.NoCacheNoStore); //No caching
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            HttpWebResponse response = null;
+            try
+            {
+                response = (HttpWebResponse)request.GetResponse();
+            }
+            catch (WebException webEx)
+            {
+                setLogT("WebException: "+ webEx.Status.ToString() );
+                return dateTime;
+            }
+            
             if (response.StatusCode == HttpStatusCode.OK)
             {
                 StreamReader stream = new StreamReader(response.GetResponseStream());
-                string html = stream.ReadToEnd();//<timestamp time=\"1395772696469995\" delay=\"1395772696469995\"/>
-                string time = Regex.Match(html, @"(?<=\btime="")[^""]*").Value;
-                double milliseconds = Convert.ToInt64(time) / 1000.0;
-                dateTime = new DateTime(1970, 1, 1).AddMilliseconds(milliseconds).ToLocalTime();
-            }
+//                string html = stream.ReadToEnd();//<timestamp time=\"1395772696469995\" delay=\"1395772696469995\"/>
+//                string time = Regex.Match(html, @"(?<=\btime="")[^""]*").Value;
+//                double milliseconds = Convert.ToInt64(time) / 1000.0;
+//                dateTime = new DateTime(1970, 1, 1).AddMilliseconds(milliseconds).ToLocalTime();
 
+                string html = stream.ReadToEnd();//id="TimeTag" style="display: none;">2015/09/28 20:39:42</span>
+                string time = Regex.Match(html, @"(?<=id=""TimeTag"" style=""display: none;"">)[^ ]*").Value;
+                dateTime = DateTime.ParseExact(time, "yyyy/MM/dd", System.Globalization.CultureInfo.InvariantCulture);
+            }
             return dateTime;
         }
 
@@ -202,19 +225,22 @@ namespace WHA_avac
 
         public void writeFile(string file, string content)
         {
-            FileStream aFile = new FileStream(file, FileMode.Create);
-            StreamWriter sw = new StreamWriter(aFile);
+            aFile = new FileStream(file, FileMode.Append);
+            sw = new StreamWriter(aFile);
             sw.Write(content);
             sw.Close();
         }
 
         public int writeResult(string content)
         {
-            setLogT("Succeed: "+ succeed +", failed: " + failed );
-            if (succeed>0){
-                string fileName = "save_" + System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", DateTimeFormatInfo.InvariantInfo) + ".txt";
-                writeFile(System.Environment.CurrentDirectory + "\\" + fileName, content);
-                setLogT("Result in " + System.Environment.CurrentDirectory + "\\" + fileName);
+            if (gFriends.Count>0){
+                if (gFileName == null)
+                {
+                    gFileName = "save_" + System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", DateTimeFormatInfo.InvariantInfo) + ".txt";
+                    setLogT("Create file: " + System.Environment.CurrentDirectory + "\\" + gFileName);
+                }
+                writeFile(System.Environment.CurrentDirectory + "\\" + gFileName, content);
+
             }
                  
             return 1;
@@ -499,7 +525,7 @@ namespace WHA_avac
                 return -1;
             }
 
-            rgx = @"(?<=name=""reg_instance"" value="").*?(?="" /><input )";
+            rgx = @"(?<=name=""reg_instance"" value="").+?(?="")";
             myMatch = (new Regex(rgx)).Match(respHtml);
             if (myMatch.Success)
             {
@@ -639,27 +665,32 @@ namespace WHA_avac
 			{
 				profile_id = myMatch.Groups[0].Value;
 			}
-            
+
             respHtml = respHtml.Substring(140000, respHtml.Length-140000);
             rgx = @"(?<=https:\/\/www\.facebook\.com\/)(\w|\.)+?(?=\?fref=pb&amp;hc_location=\w+?"" tabindex=)";
             myMatch = (new Regex(rgx)).Match(respHtml);
             while (myMatch.Success)
             {
+                iii++;
+
                 //ignore all digital id
                 Regex rex = new Regex(@"^(\.|\d)+$");
                 if (rex.IsMatch(myMatch.Groups[0].Value))
                 {
                     continue;
                 }
-                if ((gFriends == null) || (!gFriends.Contains(myMatch.Groups[0].Value)))
+                if ((gFriends.Count == 0) || (!gFriends.Contains(myMatch.Groups[0].Value)))
                 {
                     gFriends.Add(myMatch.Groups[0].Value);
-                    //datr = myMatch.Groups[0].Value;
+                    string pattern = @"^";
+                    string replacement = "1-1-";
+                    writeResult(Regex.Replace(myMatch.Groups[0].Value, pattern, replacement) + Environment.NewLine);
+                    successInOneProbe++;
                 }
                 myMatch = myMatch.NextMatch();
             }
 
-            rgx = @"(?<=pagelet_timeline_app_collection_" + collection_token.Replace("%3A",":") + @""",{""__m"":""\w+_\w+_\w+""},"").*?(?="")";
+            rgx = @"(?<=pagelet_timeline_app_collection_" + collection_token.Replace("%3a",":") + @""",{""__m"":""\w+_\w+_\w+""},"").*?(?="")";
 			myMatch = (new Regex(rgx)).Match(respHtml);
 			if (myMatch.Success)
 			{
@@ -673,6 +704,10 @@ namespace WHA_avac
 
             //page by page
             while(true){
+                if (gForceToStop)
+                {
+                    break;
+                }
                 respHtml = weLoveYue(
                     "https://www.facebook.com/ajax/pagelet/generic.php/AllFriendsAppCollectionPagelet?data=%7B%22collection_token%22%3A%22"
                     + collection_token + "%22%2C%22cursor%22%3A%22" + cursor + "%22%2C%22tab_key%22%3A%22friends%22%2C%22profile_id%22%3A"
@@ -682,25 +717,31 @@ namespace WHA_avac
                     ,
                     "GET", "", false, "");
 
-                rgx = @"(?<=https:\/\/www\.facebook\.com\/)\w+?(?=\?fref=pb&amp;hc_location=\w?"" tabindex=)";
+                //rgx = @"(?<=https:\/\/www\.facebook\.com\/)(\w|\.)+?(?=\?fref=pb&amp;hc_location=\w+?"" tabindex=)";
+                rgx = @"(?<=facebook\.com\\\/)(\w|\.)+?(?=\?fref=pb\&amp\;hc_location=\w+?\\\"" tabindex=)";
+                
                 myMatch = (new Regex(rgx)).Match(respHtml);
                 while (myMatch.Success)
                 {
+                    iii++;
                     //ignore all digital id
                     Regex rex = new Regex(@"^(\.|\d)+$");
                     if (rex.IsMatch(myMatch.Groups[0].Value))
                     {
                         continue;
                     }
-                    if ((gFriends == null) || (!gFriends.Contains(myMatch.Groups[0].Value)))
+                    if ((gFriends.Count == 0) || (!gFriends.Contains(myMatch.Groups[0].Value)))
                     {
                         gFriends.Add(myMatch.Groups[0].Value);
-                        //datr = myMatch.Groups[0].Value;
+                        string pattern = @"^";
+                        string replacement = "1-1-";
+                        writeResult(Regex.Replace(myMatch.Groups[0].Value, pattern, replacement) + Environment.NewLine);
+                        successInOneProbe++;
                     }
                     myMatch = myMatch.NextMatch();
                 }
 
-                rgx = @"(?<=pagelet_timeline_app_collection_" + collection_token.Replace("%3A", ":") + @""",{""__m"":""\w+_\w+_\w+""},"").*?(?="")";
+                rgx = @"(?<=pagelet_timeline_app_collection_" + collection_token.Replace("%3a", ":") + @""",{""__m"":""\w+_\w+_\w+""},"").*?(?="")";
                 myMatch = (new Regex(rgx)).Match(respHtml);
                 if (myMatch.Success)
                 {
@@ -712,6 +753,7 @@ namespace WHA_avac
                 }
                 cursor = ToUrlEncode(cursor);
             }
+            return 1;
         }
 
 
@@ -786,6 +828,7 @@ namespace WHA_avac
                 {
                     deleteB.Enabled = true;
                 }
+                gForceToStop = false;
                 return;
             }
             if (!gLoginOkFlag)
@@ -805,10 +848,12 @@ namespace WHA_avac
                     {
                         deleteB.Enabled = true;
                     }
+                    gForceToStop = false;
                     return;
                 }
             }
 
+            setLogT("开始扫描..");
             while (true)
             {
                 for (int i = 0; i < urlList.Items.Count; i++)
@@ -832,6 +877,7 @@ namespace WHA_avac
                             {
                                 deleteB.Enabled = true;
                             }
+                            gForceToStop = false;
                             return;
                         }
                     }
@@ -848,6 +894,9 @@ namespace WHA_avac
                             {
                                 urlList.SetItemChecked(i, true);
                                 succeed++;
+                                setLogT(" got from " + urlList.GetItemText(urlList.Items[i]) + ": " + successInOneProbe);
+                                SUMsuccessInOneProbe += successInOneProbe;
+                                successInOneProbe = 0;
                             }
                         });
                         urlList.Invoke(sl);
@@ -879,48 +928,37 @@ namespace WHA_avac
                     {
                         Thread.Sleep(100);
                     }
-                }
+                    if (gForceToStop)
+                    {
+                        break;
+                    }
+                }//end of 'for' for checklistbox
                 break;//just proce once.
             }
-
-            if (gFriends == null)
+            setLogT(iii+"列表扫描结束，成功列表项: " + succeed + ", 失败列表项: " + failed + ", 共收集好友: " + SUMsuccessInOneProbe);
+            succeed=0;
+            failed = 0;
+            SUMsuccessInOneProbe = 0;
+            if (gFileName != null)
             {
-                if (urlList.InvokeRequired)
-                {
-                    delegate2 sl = new delegate2(delegate()
-                    {
-                        deleteB.Enabled = true;
-                    });
-                    urlList.Invoke(sl);
-                }
-                else
-                {
-                    deleteB.Enabled = true;
-                }
-                return;
-            }
+                setLogT("Result in " + System.Environment.CurrentDirectory + "\\" + gFileName);
 
-            int j = 0;
-            string result = "";
-            foreach (string str in gFriends){
-                string pattern = @"^";
-                string replacement = "1-1-";
-                result += Regex.Replace(str, pattern, replacement) + Environment.NewLine;
-                j++;
             }
-            writeResult(result);
+            gFriends.Clear();
             if (urlList.InvokeRequired)
             {
                 delegate2 sl = new delegate2(delegate()
                 {
-                    deleteB.Enabled = false;
+                    deleteB.Enabled = true;
                 });
                 urlList.Invoke(sl);
             }
             else
             {
-                deleteB.Enabled = false;
+                deleteB.Enabled = true;
             }
+            gForceToStop = false;
+            return;
         }
 
         private void loginB_Click(object sender, EventArgs e)
@@ -1120,6 +1158,12 @@ namespace WHA_avac
             {
                 autoB.PerformClick();
             }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            gForceToStop = true;
+            setLogT("stop probe");
         }
     }
 }
