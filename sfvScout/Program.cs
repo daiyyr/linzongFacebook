@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
-using WHA_avac;
+using facebookWorm;
 
-namespace sfvScout
+namespace facebookWorm
 {
     static class Program
     {

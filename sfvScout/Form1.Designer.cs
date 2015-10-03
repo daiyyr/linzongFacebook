@@ -1,4 +1,4 @@
-﻿namespace WHA_avac
+﻿namespace facebookWorm
 {
     partial class Form1
     {
@@ -255,17 +255,17 @@
         private System.Windows.Forms.Button loginB;
         private System.Windows.Forms.Button autoB;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.TextBox rate;
+        public  System.Windows.Forms.TextBox rate;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.RichTextBox logT;
+        private  System.Windows.Forms.RichTextBox logT;
         private System.Windows.Forms.Button addB;
-        private System.Windows.Forms.Button deleteB;
-        private System.Windows.Forms.TextBox inputT;
+        public  System.Windows.Forms.Button deleteB;
+        public  System.Windows.Forms.TextBox inputT;
         private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.CheckedListBox urlList;
-        private System.Windows.Forms.RichTextBox testLog;
-        private System.Windows.Forms.TextBox textBox1;
+        public  System.Windows.Forms.CheckedListBox urlList;
+        private  System.Windows.Forms.RichTextBox testLog;
+        public  System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Label label6;
